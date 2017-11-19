@@ -35,7 +35,7 @@ public class EnsemblUtilsTest
 											.findSpecies("human")
 											.findGene("BHMT")
 											.getLocation();
-		System.out.println(location);
+		//System.out.println(location);
 
 		assertEquals(5, location.getChromosome());
 		assertEquals("GRCh38", location.getReferenceAssembly());
