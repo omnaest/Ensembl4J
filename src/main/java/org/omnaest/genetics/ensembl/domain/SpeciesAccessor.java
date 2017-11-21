@@ -18,6 +18,7 @@
 */
 package org.omnaest.genetics.ensembl.domain;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public interface SpeciesAccessor
@@ -44,6 +45,6 @@ public interface SpeciesAccessor
 	 * @param symbol
 	 * @return {@link GeneAccessor}
 	 */
-	public GeneAccessor findGene(String symbol);
+	public Optional<GeneAccessor> findGene(String symbol);
 
 }

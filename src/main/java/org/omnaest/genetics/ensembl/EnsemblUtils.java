@@ -18,6 +18,12 @@
 */
 package org.omnaest.genetics.ensembl;
 
+import java.io.File;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
@@ -32,6 +38,8 @@ import org.omnaest.genetics.ensembl.domain.raw.Species;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.cache.Cache;
+import org.omnaest.utils.cache.JsonFolderFilesCache;
+import org.omnaest.utils.element.CachedElement;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
 
 /**
@@ -45,9 +53,11 @@ public class EnsemblUtils
 
 		Stream<SpeciesAccessor> getSpecies();
 
-		SpeciesAccessor findSpecies(String name);
+		Optional<SpeciesAccessor> findSpecies(String name);
 
 		EnsemblDataSetAccessor usingCache(Cache cache);
+
+		EnsemblDataSetAccessor usingLocalCache();
 
 		EnsemblDataSetAccessor withProxy(Proxy proxy);
 
@@ -74,31 +84,43 @@ public class EnsemblUtils
 			}
 
 			@Override
-			public SpeciesAccessor findSpecies(String name)
+			public EnsemblDataSetAccessor usingLocalCache()
+			{
+				return this.usingCache(new JsonFolderFilesCache(new File("cache/ensembl")));
+			}
+
+			@Override
+			public Optional<SpeciesAccessor> findSpecies(String name)
 			{
 				return this	.getSpecies()
 							.filter(species -> StringUtils.equalsIgnoreCase(name, species.getName())
 									|| StringUtils.equalsIgnoreCase(name, species.getDisplayName()) || species	.getAliases()
 																												.anyMatch(alias -> StringUtils.equalsIgnoreCase(name,
 																																								alias)))
-							.findFirst()
-							.get();
+							.findFirst();
 			}
 
-			@Override
-			public Stream<SpeciesAccessor> getSpecies()
+			private Supplier<List<SpeciesAccessor>> species = CachedElement.of(() ->
 			{
 				SpeciesList speciesList = this.restAccessor.getSpecies();
 				if (speciesList != null && speciesList.getSpecies() != null)
 				{
 					return speciesList	.getSpecies()
 										.stream()
-										.map(rawSpecies -> this.createSpeciesAccessor(rawSpecies));
+										.map(rawSpecies -> this.createSpeciesAccessor(rawSpecies))
+										.collect(Collectors.toList());
 				}
 				else
 				{
-					return Stream.empty();
+					return Collections.<SpeciesAccessor>emptyList();
 				}
+			});
+
+			@Override
+			public Stream<SpeciesAccessor> getSpecies()
+			{
+				return this.species	.get()
+									.stream();
 			}
 
 			private SpeciesAccessor createSpeciesAccessor(Species rawSpecies)
@@ -125,15 +147,14 @@ public class EnsemblUtils
 					}
 
 					@Override
-					public GeneAccessor findGene(String symbol)
+					public Optional<GeneAccessor> findGene(String symbol)
 					{
 						XRefs xRefs = restAccessor.getXRefs(rawSpecies.getName(), symbol);
 
 						return xRefs.stream()
 									.filter(xref -> StringUtils.equalsIgnoreCase("gene", xref.getType()))
 									.map(xref -> this.createGeneAccessor(xref.getId()))
-									.findFirst()
-									.get();
+									.findFirst();
 					}
 
 					private GeneAccessor createGeneAccessor(String id)

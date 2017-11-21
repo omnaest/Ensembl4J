@@ -33,7 +33,9 @@ public class EnsemblUtilsTest
 	{
 		GeneLocation location = EnsemblUtils.getInstance()
 											.findSpecies("human")
+											.get()
 											.findGene("BHMT")
+											.get()
 											.getLocation();
 		//System.out.println(location);
 
