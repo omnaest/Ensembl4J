@@ -93,10 +93,10 @@ public class EnsemblUtils
 			public Optional<SpeciesAccessor> findSpecies(String name)
 			{
 				return this	.getSpecies()
-							.filter(species -> StringUtils.equalsIgnoreCase(name, species.getName())
-									|| StringUtils.equalsIgnoreCase(name, species.getDisplayName()) || species	.getAliases()
-																												.anyMatch(alias -> StringUtils.equalsIgnoreCase(name,
-																																								alias)))
+							.filter(species -> StringUtils.equalsIgnoreCase(name, species.getName()) || StringUtils.contains(name, species.getName())
+									|| StringUtils.contains(name, species.getDisplayName()) || StringUtils.equalsIgnoreCase(name, species.getDisplayName())
+									|| species	.getAliases()
+												.anyMatch(alias -> StringUtils.equalsIgnoreCase(name, alias)))
 							.findFirst();
 			}
 

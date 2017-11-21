@@ -47,4 +47,23 @@ public class EnsemblUtilsTest
 										.getEnd());
 	}
 
+	@Test
+	public void testGetInstance2() throws Exception
+	{
+		GeneLocation location = EnsemblUtils.getInstance()
+											.findSpecies("Homo sapiens (Human)")
+											.get()
+											.findGene("BHMT")
+											.get()
+											.getLocation();
+		//System.out.println(location);
+
+		assertEquals(5, location.getChromosome());
+		assertEquals("GRCh38", location.getReferenceAssembly());
+		assertEquals(79111779, location	.getPosition()
+										.getStart());
+		assertEquals(79132290, location	.getPosition()
+										.getEnd());
+	}
+
 }
