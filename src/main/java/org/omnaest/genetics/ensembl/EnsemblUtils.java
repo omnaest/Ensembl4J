@@ -201,7 +201,7 @@ public class EnsemblUtils
 							String[] tokens = StringUtils.splitPreserveAllTokens(locationStr, ":");
 							if (tokens.length >= 5)
 							{
-								int chromosome = NumberUtils.toInt(tokens[2]);
+								String chromosome = tokens[2];
 								String referenceAssembly = tokens[1];
 								Range position = new Range(NumberUtils.toLong(tokens[3]), NumberUtils.toLong(tokens[4]));
 								geneLocation = new GeneAccessor.GeneLocation(chromosome, referenceAssembly, position);

@@ -57,11 +57,11 @@ public interface GeneAccessor
 
 	public static class GeneLocation
 	{
-		private int		chromosome;
+		private String	chromosome;
 		private String	referenceAssembly;
 		private Range	position;
 
-		public GeneLocation(int chromosome, String referenceAssembly, Range position)
+		public GeneLocation(String chromosome, String referenceAssembly, Range position)
 		{
 			super();
 			this.chromosome = chromosome;
@@ -69,7 +69,7 @@ public interface GeneAccessor
 			this.position = position;
 		}
 
-		public int getChromosome()
+		public String getChromosome()
 		{
 			return chromosome;
 		}
