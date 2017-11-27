@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotNull;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
+import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.JSONHelper;
 import org.omnaest.utils.rest.client.RestClient;
@@ -53,12 +54,22 @@ public class EnsemblRESTUtilsTest
 	}
 
 	@Test
+	@Ignore
 	public void testGetXRefs() throws Exception
 	{
 		XRefs xRefs = EnsemblRESTUtils	.getInstance()
 										.withProxy(new RestClient.FiddlerLocalhostProxy())
 										.getXRefs("homo_sapiens", "BHMT");
 		System.out.println(JSONHelper.prettyPrint(xRefs));
+	}
+
+	@Test
+	public void testGetVariations() throws Exception
+	{
+		Variations variations = EnsemblRESTUtils.getInstance()
+												.getVariations("ENSG00000145692");
+
+		System.out.println(JSONHelper.prettyPrint(variations));
 	}
 
 }

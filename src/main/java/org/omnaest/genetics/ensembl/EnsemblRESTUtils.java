@@ -20,6 +20,7 @@ package org.omnaest.genetics.ensembl;
 
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
+import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.rest.client.JSONRestClient;
@@ -44,14 +45,15 @@ public class EnsemblRESTUtils
 
 		EnsembleRESTAccessor withProxy(Proxy proxy);
 
+		EnsembleRESTAccessor usingCache(Cache cache);
+
 		XRefs getXRefs(String species, String symbol);
 
 		SpeciesList getSpecies();
 
 		Sequence getSequence(String id);
 
-		EnsembleRESTAccessor usingCache(Cache cache);
-
+		Variations getVariations(String id);
 	}
 
 	public static EnsembleRESTAccessor getInstance()
@@ -61,6 +63,14 @@ public class EnsemblRESTUtils
 			private Proxy	proxy	= null;
 			private String	baseUrl	= "http://rest.ensembl.org";
 			private Cache	cache	= null;
+
+			@Override
+			public Variations getVariations(String id)
+			{
+				String url = this.baseUrl + "/overlap/id/" + id + "?feature=variation";
+				return this	.newRestClient()
+							.requestGet(url, Variations.class);
+			}
 
 			@Override
 			public Sequence getSequence(String id)

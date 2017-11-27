@@ -20,20 +20,32 @@ package org.omnaest.genetics.ensembl.domain;
 
 import java.util.List;
 
-/**
- * Accessor for gene information
- * 
- * @author omnaest
- */
-public interface GeneAccessor
+public class Variant
 {
-	public String getName();
+	private Range			range;
+	private List<String>	alleles;
 
-	public String getDescription();
+	public Variant(Range range, List<String> alleles)
+	{
+		super();
+		this.range = range;
+		this.alleles = alleles;
+	}
 
-	public String getSequence();
+	public Range getRange()
+	{
+		return this.range;
+	}
 
-	public GeneLocation getLocation();
+	public List<String> getAlleles()
+	{
+		return this.alleles;
+	}
 
-	public List<Variant> getVariants();
+	@Override
+	public String toString()
+	{
+		return "Variant [range=" + this.range + ", alleles=" + this.alleles + "]";
+	}
+
 }

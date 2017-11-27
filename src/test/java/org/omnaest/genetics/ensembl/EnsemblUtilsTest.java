@@ -20,9 +20,12 @@ package org.omnaest.genetics.ensembl;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.List;
+
 import org.junit.Ignore;
 import org.junit.Test;
-import org.omnaest.genetics.ensembl.domain.GeneAccessor.GeneLocation;
+import org.omnaest.genetics.ensembl.domain.GeneLocation;
+import org.omnaest.genetics.ensembl.domain.Variant;
 
 public class EnsemblUtilsTest
 {
@@ -48,7 +51,8 @@ public class EnsemblUtilsTest
 	}
 
 	@Test
-	public void testGetInstance2() throws Exception
+	@Ignore
+	public void testGetILocation() throws Exception
 	{
 		GeneLocation location = EnsemblUtils.getInstance()
 											.findSpecies("Homo sapiens (Human)")
@@ -58,12 +62,25 @@ public class EnsemblUtilsTest
 											.getLocation();
 		//System.out.println(location);
 
-		assertEquals(5, location.getChromosome());
+		assertEquals("5", location.getChromosome());
 		assertEquals("GRCh38", location.getReferenceAssembly());
 		assertEquals(79111779, location	.getPosition()
 										.getStart());
 		assertEquals(79132290, location	.getPosition()
 										.getEnd());
+	}
+
+	@Test
+	public void testGetVariants() throws Exception
+	{
+		List<Variant> variants = EnsemblUtils	.getInstance()
+												.findSpecies("human")
+												.get()
+												.findGene("BHMT")
+												.get()
+												.getVariants();
+		System.out.println(variants);
+
 	}
 
 }

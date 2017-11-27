@@ -30,13 +30,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.omnaest.genetics.ensembl.EnsemblRESTUtils.EnsembleRESTAccessor;
 import org.omnaest.genetics.ensembl.domain.GeneAccessor;
-import org.omnaest.genetics.ensembl.domain.GeneAccessor.GeneLocation;
-import org.omnaest.genetics.ensembl.domain.GeneAccessor.Range;
+import org.omnaest.genetics.ensembl.domain.GeneLocation;
+import org.omnaest.genetics.ensembl.domain.Range;
 import org.omnaest.genetics.ensembl.domain.SpeciesAccessor;
+import org.omnaest.genetics.ensembl.domain.Variant;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Species;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
+import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
+import org.omnaest.utils.ListUtils;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.cache.JsonFolderFilesCache;
 import org.omnaest.utils.element.CachedElement;
@@ -160,6 +163,7 @@ public class EnsemblUtils
 					private GeneAccessor createGeneAccessor(String id)
 					{
 						Sequence rawSequence = restAccessor.getSequence(id);
+						Variations variations = restAccessor.getVariations(id);
 						GeneLocation geneLocation = this.determineGeneLocation(rawSequence);
 						return new GeneAccessor()
 						{
@@ -187,6 +191,16 @@ public class EnsemblUtils
 							{
 								return geneLocation;
 							}
+
+							@Override
+							public List<Variant> getVariants()
+							{
+								return variations	.stream()
+													.map(variation -> new Variant(	new Range(variation.getStart(), variation.getEnd()),
+																					ListUtils.defaultIfNull(variation.getAlleles())))
+													.collect(Collectors.toList());
+							}
+
 						};
 					}
 
@@ -204,7 +218,7 @@ public class EnsemblUtils
 								String chromosome = tokens[2];
 								String referenceAssembly = tokens[1];
 								Range position = new Range(NumberUtils.toLong(tokens[3]), NumberUtils.toLong(tokens[4]));
-								geneLocation = new GeneAccessor.GeneLocation(chromosome, referenceAssembly, position);
+								geneLocation = new GeneLocation(chromosome, referenceAssembly, position);
 							}
 						}
 
