@@ -16,26 +16,13 @@
 
 
 */
-package org.omnaest.genetics.ensembl.domain;
+package org.omnaest.genetics.ensembl.domain.raw;
 
-import java.util.List;
+import java.util.ArrayList;
 
-/**
- * Accessor for gene information
- * 
- * @author omnaest
- */
-public interface GeneAccessor
+public class ExonRegions extends ArrayList<ExonRegion>
 {
-	public String getName();
 
-	public String getDescription();
+	private static final long serialVersionUID = 8238289079538965202L;
 
-	public String getSequence();
-
-	public GeneLocation getLocation();
-
-	public List<Variant> getVariants();
-
-	public List<Exon> getExons();
 }

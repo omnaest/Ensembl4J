@@ -24,8 +24,10 @@ import java.util.List;
 
 import org.junit.Ignore;
 import org.junit.Test;
+import org.omnaest.genetics.ensembl.domain.Exon;
 import org.omnaest.genetics.ensembl.domain.GeneLocation;
 import org.omnaest.genetics.ensembl.domain.Variant;
+import org.omnaest.utils.JSONHelper;
 
 public class EnsemblUtilsTest
 {
@@ -71,6 +73,7 @@ public class EnsemblUtilsTest
 	}
 
 	@Test
+	@Ignore
 	public void testGetVariants() throws Exception
 	{
 		List<Variant> variants = EnsemblUtils	.getInstance()
@@ -80,6 +83,20 @@ public class EnsemblUtilsTest
 												.get()
 												.getVariants();
 		System.out.println(variants);
+
+	}
+
+	@Test
+	@Ignore
+	public void testGetExons() throws Exception
+	{
+		List<Exon> exons = EnsemblUtils	.getInstance()
+										.findSpecies("human")
+										.get()
+										.findGene("BHMT")
+										.get()
+										.getExons();
+		System.out.println(JSONHelper.prettyPrint(exons));
 
 	}
 

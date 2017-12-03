@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 
 import org.junit.Ignore;
 import org.junit.Test;
+import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
@@ -64,12 +65,22 @@ public class EnsemblRESTUtilsTest
 	}
 
 	@Test
+	@Ignore
 	public void testGetVariations() throws Exception
 	{
 		Variations variations = EnsemblRESTUtils.getInstance()
 												.getVariations("ENSG00000145692");
 
 		System.out.println(JSONHelper.prettyPrint(variations));
+	}
+
+	@Test
+	public void testGetExonRegions() throws Exception
+	{
+		ExonRegions regions = EnsemblRESTUtils	.getInstance()
+												.getExonRegions("ENSG00000145692");
+
+		System.out.println(JSONHelper.prettyPrint(regions));
 	}
 
 }

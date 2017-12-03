@@ -21,6 +21,7 @@ package org.omnaest.genetics.ensembl;
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -29,11 +30,13 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.omnaest.genetics.ensembl.EnsemblRESTUtils.EnsembleRESTAccessor;
+import org.omnaest.genetics.ensembl.domain.Exon;
 import org.omnaest.genetics.ensembl.domain.GeneAccessor;
 import org.omnaest.genetics.ensembl.domain.GeneLocation;
 import org.omnaest.genetics.ensembl.domain.Range;
 import org.omnaest.genetics.ensembl.domain.SpeciesAccessor;
 import org.omnaest.genetics.ensembl.domain.Variant;
+import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Species;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
@@ -164,7 +167,10 @@ public class EnsemblUtils
 					{
 						Sequence rawSequence = restAccessor.getSequence(id);
 						Variations variations = restAccessor.getVariations(id);
+						ExonRegions exonRegions = restAccessor.getExonRegions(id);
 						GeneLocation geneLocation = this.determineGeneLocation(rawSequence);
+						Map<String, String> exonIdToSequence = this.determineExonSequences(exonRegions);
+
 						return new GeneAccessor()
 						{
 							@Override
@@ -201,7 +207,27 @@ public class EnsemblUtils
 													.collect(Collectors.toList());
 							}
 
+							@Override
+							public List<Exon> getExons()
+							{
+								return exonRegions	.stream()
+													.map(region -> new Exon(new Range(region.getStart(), region.getEnd()),
+																			exonIdToSequence.get(region.getExonId())))
+													.collect(Collectors.toList());
+							}
+
 						};
+					}
+
+					private Map<String, String> determineExonSequences(ExonRegions exonRegions)
+					{
+						List<Sequence> sequences = exonRegions	.stream()
+																.map(region -> region.getExonId())
+																.distinct()
+																.map(exonId -> restAccessor.getSequence(exonId))
+																.collect(Collectors.toList());
+						return sequences.stream()
+										.collect(Collectors.toMap(seq -> seq.getId(), seq -> seq.getSequence()));
 					}
 
 					private GeneLocation determineGeneLocation(Sequence rawSequence)

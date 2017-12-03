@@ -18,24 +18,32 @@
 */
 package org.omnaest.genetics.ensembl.domain;
 
-import java.util.List;
-
-/**
- * Accessor for gene information
- * 
- * @author omnaest
- */
-public interface GeneAccessor
+public class Exon
 {
-	public String getName();
+	private Range	position;
+	private String	sequence;
 
-	public String getDescription();
+	public Exon(Range position, String sequence)
+	{
+		super();
+		this.position = position;
+		this.sequence = sequence;
+	}
 
-	public String getSequence();
+	public Range getPosition()
+	{
+		return this.position;
+	}
 
-	public GeneLocation getLocation();
+	public String getSequence()
+	{
+		return this.sequence;
+	}
 
-	public List<Variant> getVariants();
+	@Override
+	public String toString()
+	{
+		return "Exon [position=" + this.position + ", sequence=" + this.sequence + "]";
+	}
 
-	public List<Exon> getExons();
 }
