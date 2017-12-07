@@ -16,31 +16,11 @@
 
 
 */
-package org.omnaest.genetics.ensembl.domain;
+package org.omnaest.genetics.ensembl.domain.raw;
 
-import java.util.List;
-import java.util.stream.Stream;
+import java.util.ArrayList;
 
-/**
- * Accessor for gene information
- * 
- * @author omnaest
- */
-public interface GeneAccessor
+public class Sequences extends ArrayList<Sequence>
 {
-	public String getName();
-
-	public String getDescription();
-
-	public String getDNASequence();
-
-	public GeneLocation getLocation();
-
-	public List<Variant> getVariants();
-
-	public List<Exon> getExons();
-
-	public List<String> getProteinSequences();
-
-	public Stream<ProteinTranscriptAccessor> getProteinTranscripts();
+	private static final long serialVersionUID = -6272873498738780003L;
 }

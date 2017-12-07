@@ -19,28 +19,10 @@
 package org.omnaest.genetics.ensembl.domain;
 
 import java.util.List;
-import java.util.stream.Stream;
 
-/**
- * Accessor for gene information
- * 
- * @author omnaest
- */
-public interface GeneAccessor
+public interface ProteinTranscriptAccessor
 {
-	public String getName();
+	public String getProteinSequence();
 
-	public String getDescription();
-
-	public String getDNASequence();
-
-	public GeneLocation getLocation();
-
-	public List<Variant> getVariants();
-
-	public List<Exon> getExons();
-
-	public List<String> getProteinSequences();
-
-	public Stream<ProteinTranscriptAccessor> getProteinTranscripts();
+	public List<String> getVariantSequences();
 }

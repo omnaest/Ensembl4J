@@ -20,7 +20,9 @@ package org.omnaest.genetics.ensembl;
 
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
+import org.omnaest.genetics.ensembl.domain.raw.Sequences;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
+import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.cache.Cache;
@@ -52,9 +54,13 @@ public class EnsemblRESTUtils
 
 		SpeciesList getSpecies();
 
-		Sequence getSequence(String id);
+		Sequence getDNASequence(String id);
+
+		Sequences getProteinSequences(String id);
 
 		Variations getVariations(String id);
+
+		Transcripts getTranscripts(String id);
 
 		ExonRegions getExonRegions(String id);
 	}
@@ -84,11 +90,27 @@ public class EnsemblRESTUtils
 			}
 
 			@Override
-			public Sequence getSequence(String id)
+			public Transcripts getTranscripts(String id)
+			{
+				String url = this.baseUrl + "/overlap/id/" + id + "?feature=transcript";
+				return this	.newRestClient()
+							.requestGet(url, Transcripts.class);
+			}
+
+			@Override
+			public Sequence getDNASequence(String id)
 			{
 				String url = this.baseUrl + "/sequence/id/" + id;
 				return this	.newRestClient()
 							.requestGet(url, Sequence.class);
+			}
+
+			@Override
+			public Sequences getProteinSequences(String id)
+			{
+				String url = this.baseUrl + "/sequence/id/" + id + "?type=protein&multiple_sequences=true";
+				return this	.newRestClient()
+							.requestGet(url, Sequences.class);
 			}
 
 			private RestClient newRestClient()

@@ -100,4 +100,20 @@ public class EnsemblUtilsTest
 
 	}
 
+	@Test
+	public void testGetProteinTranscripts() throws Exception
+	{
+		String proteinSequence = EnsemblUtils	.getInstance()
+												.findSpecies("human")
+												.get()
+												.findGene("BHMT")
+												.get()
+												.getProteinTranscripts()
+												.findFirst()
+												.get()
+												.getProteinSequence();
+		System.out.println(proteinSequence.substring(0, 100));
+
+	}
+
 }

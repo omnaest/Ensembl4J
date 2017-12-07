@@ -33,13 +33,18 @@ import org.omnaest.genetics.ensembl.EnsemblRESTUtils.EnsembleRESTAccessor;
 import org.omnaest.genetics.ensembl.domain.Exon;
 import org.omnaest.genetics.ensembl.domain.GeneAccessor;
 import org.omnaest.genetics.ensembl.domain.GeneLocation;
+import org.omnaest.genetics.ensembl.domain.ProteinTranscriptAccessor;
 import org.omnaest.genetics.ensembl.domain.Range;
 import org.omnaest.genetics.ensembl.domain.SpeciesAccessor;
 import org.omnaest.genetics.ensembl.domain.Variant;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
+import org.omnaest.genetics.ensembl.domain.raw.Sequences;
 import org.omnaest.genetics.ensembl.domain.raw.Species;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
+import org.omnaest.genetics.ensembl.domain.raw.Transcript;
+import org.omnaest.genetics.ensembl.domain.raw.Transcript.BioType;
+import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.ListUtils;
@@ -165,7 +170,9 @@ public class EnsemblUtils
 
 					private GeneAccessor createGeneAccessor(String id)
 					{
-						Sequence rawSequence = restAccessor.getSequence(id);
+						Sequence rawSequence = restAccessor.getDNASequence(id);
+						Sequences proteinSequences = restAccessor.getProteinSequences(id);
+						Transcripts transcripts = restAccessor.getTranscripts(id);
 						Variations variations = restAccessor.getVariations(id);
 						ExonRegions exonRegions = restAccessor.getExonRegions(id);
 						GeneLocation geneLocation = this.determineGeneLocation(rawSequence);
@@ -187,9 +194,17 @@ public class EnsemblUtils
 							}
 
 							@Override
-							public String getSequence()
+							public String getDNASequence()
 							{
 								return rawSequence.getSequence();
+							}
+
+							@Override
+							public List<String> getProteinSequences()
+							{
+								return proteinSequences	.stream()
+														.map(seq -> seq.getSequence())
+														.collect(Collectors.toList());
 							}
 
 							@Override
@@ -216,6 +231,36 @@ public class EnsemblUtils
 													.collect(Collectors.toList());
 							}
 
+							@Override
+							public Stream<ProteinTranscriptAccessor> getProteinTranscripts()
+							{
+								return transcripts	.stream()
+													.filter(transcript -> StringUtils.equalsIgnoreCase(transcript.getParent(), id))
+													.filter(transcript -> transcript.hasBiotype(BioType.protein_coding))
+													.map(rawTanscript -> this.newTranscriptAccessor(rawTanscript));
+							}
+
+							private ProteinTranscriptAccessor newTranscriptAccessor(Transcript rawTanscript)
+							{
+								return new ProteinTranscriptAccessor()
+								{
+									@Override
+									public String getProteinSequence()
+									{
+										return restAccessor	.getProteinSequences(rawTanscript.getId())
+															.get(0)
+															.getSequence();
+									}
+
+									@Override
+									public List<String> getVariantSequences()
+									{
+										// TODO Auto-generated method stub
+										throw new UnsupportedOperationException();
+									}
+								};
+							}
+
 						};
 					}
 
@@ -224,7 +269,7 @@ public class EnsemblUtils
 						List<Sequence> sequences = exonRegions	.stream()
 																.map(region -> region.getExonId())
 																.distinct()
-																.map(exonId -> restAccessor.getSequence(exonId))
+																.map(exonId -> restAccessor.getDNASequence(exonId))
 																.collect(Collectors.toList());
 						return sequences.stream()
 										.collect(Collectors.toMap(seq -> seq.getId(), seq -> seq.getSequence()));

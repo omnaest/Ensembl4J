@@ -24,6 +24,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
+import org.omnaest.genetics.ensembl.domain.raw.Sequences;
+import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.JSONHelper;
@@ -34,10 +36,10 @@ public class EnsemblRESTUtilsTest
 
 	@Test
 	@Ignore
-	public void testGetSequence() throws Exception
+	public void testGetDNASequence() throws Exception
 	{
 		Sequence sequence = EnsemblRESTUtils.getInstance()
-											.getSequence("ENSG00000145692");
+											.getDNASequence("ENSG00000145692");
 
 		System.out.println(sequence	.getSequence()
 									.substring(0, 100));
@@ -75,6 +77,7 @@ public class EnsemblRESTUtilsTest
 	}
 
 	@Test
+	@Ignore
 	public void testGetExonRegions() throws Exception
 	{
 		ExonRegions regions = EnsemblRESTUtils	.getInstance()
@@ -83,4 +86,28 @@ public class EnsemblRESTUtilsTest
 		System.out.println(JSONHelper.prettyPrint(regions));
 	}
 
+	@Test
+	@Ignore
+	public void testGetProteinSequences() throws Exception
+	{
+		Sequences sequence = EnsemblRESTUtils	.getInstance()
+												.withProxy(new RestClient.FiddlerLocalhostProxy())
+												.getProteinSequences("ENSG00000145692");
+
+		System.out.println(sequence	.iterator()
+									.next()
+									.getSequence()
+									.substring(0, 100));
+		assertNotNull(sequence);
+
+	}
+
+	@Test
+	public void testGetInstance() throws Exception
+	{
+		Transcripts transcripts = EnsemblRESTUtils	.getInstance()
+													.getTranscripts("ENSG00000145692");
+
+		System.out.println(JSONHelper.prettyPrint(transcripts));
+	}
 }
