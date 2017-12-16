@@ -19,6 +19,7 @@
 package org.omnaest.genetics.ensembl;
 
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
+import org.omnaest.genetics.ensembl.domain.raw.RegionMappings;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Sequences;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
@@ -54,8 +55,28 @@ public class EnsemblRESTUtils
 
 		SpeciesList getSpecies();
 
+		/**
+		 * Returns the genome DNA sequence
+		 * 
+		 * @param id
+		 * @return
+		 */
 		Sequence getDNASequence(String id);
 
+		/**
+		 * Returns the cDNA sequence
+		 * 
+		 * @param id
+		 * @return
+		 */
+		Sequences getCodingDNASequence(String id);
+
+		/**
+		 * Returns the amino acid sequence of the protein
+		 * 
+		 * @param id
+		 * @return
+		 */
 		Sequences getProteinSequences(String id);
 
 		Variations getVariations(String id);
@@ -63,6 +84,20 @@ public class EnsemblRESTUtils
 		Transcripts getTranscripts(String id);
 
 		ExonRegions getExonRegions(String id);
+
+		/**
+		 * Returns the mapping between regions of two reference genomes (assembly)
+		 * 
+		 * @param species
+		 * @param sourceReferenceAssembly
+		 * @param targetReferenceAssembly
+		 * @param chromosome
+		 * @param start
+		 * @param end
+		 * @return
+		 */
+		RegionMappings getRegionMappings(String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome, long start,
+										long end);
 	}
 
 	public static EnsembleRESTAccessor getInstance()
@@ -79,6 +114,22 @@ public class EnsemblRESTUtils
 				String url = this.baseUrl + "/overlap/id/" + id + "?feature=exon";
 				return this	.newRestClient()
 							.requestGet(url, ExonRegions.class);
+			}
+
+			@Override
+			public RegionMappings getRegionMappings(	String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome,
+													long start, long end)
+			{
+				RestClient restClient = this.newRestClient();
+				String url = restClient	.urlBuilder()
+										.setBaseUrl(this.baseUrl)
+										.addPathToken("map")
+										.addPathToken(species)
+										.addPathToken(sourceReferenceAssembly)
+										.addPathToken(chromosome + ":" + start + ":" + end)
+										.addPathToken(targetReferenceAssembly)
+										.build();
+				return restClient.requestGet(url, RegionMappings.class);
 			}
 
 			@Override
@@ -103,6 +154,14 @@ public class EnsemblRESTUtils
 				String url = this.baseUrl + "/sequence/id/" + id;
 				return this	.newRestClient()
 							.requestGet(url, Sequence.class);
+			}
+
+			@Override
+			public Sequences getCodingDNASequence(String id)
+			{
+				String url = this.baseUrl + "/sequence/id/" + id + "?type=cdna&multiple_sequences=true";
+				return this	.newRestClient()
+							.requestGet(url, Sequences.class);
 			}
 
 			@Override

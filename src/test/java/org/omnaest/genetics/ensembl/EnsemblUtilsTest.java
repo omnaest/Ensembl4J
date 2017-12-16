@@ -116,4 +116,22 @@ public class EnsemblUtilsTest
 
 	}
 
+	@Test
+	public void testReferenceLocation() throws Exception
+	{
+		GeneLocation location = EnsemblUtils.getInstance()
+											.findSpecies("human")
+											.get()
+											.findGene("BHMT")
+											.get()
+											.getLocation("GRCh37");
+
+		assertEquals(78407602, location	.getPosition()
+										.getStart());
+		assertEquals(78428113, location	.getPosition()
+										.getEnd());
+		assertEquals("GRCh37", location.getReferenceAssembly());
+		assertEquals("5", location.getChromosome());
+	}
+
 }

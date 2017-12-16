@@ -16,34 +16,29 @@
 
 
 */
-package org.omnaest.genetics.ensembl.domain;
+package org.omnaest.genetics.ensembl.domain.raw;
 
 import java.util.List;
-import java.util.stream.Stream;
 
-/**
- * Accessor for gene information
- * 
- * @author omnaest
- */
-public interface GeneAccessor
+public class RegionMappings
 {
-	public String getName();
+	private List<RegionMapping> mappings;
 
-	public String getDescription();
+	public List<RegionMapping> getMappings()
+	{
+		return this.mappings;
+	}
 
-	public String getDNASequence();
+	public RegionMappings setMappings(List<RegionMapping> mappings)
+	{
+		this.mappings = mappings;
+		return this;
+	}
 
-	public GeneLocation getLocation();
-
-	public GeneLocation getLocation(String referenceAssembly);
-
-	public List<Variant> getVariants();
-
-	public List<Exon> getExons();
-
-	public List<String> getProteinSequences();
-
-	public Stream<ProteinTranscriptAccessor> getProteinTranscripts();
+	@Override
+	public String toString()
+	{
+		return "RegionMappings [mappings=" + this.mappings + "]";
+	}
 
 }

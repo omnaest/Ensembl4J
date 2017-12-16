@@ -18,11 +18,14 @@
 */
 package org.omnaest.genetics.ensembl;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
 import org.junit.Ignore;
 import org.junit.Test;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
+import org.omnaest.genetics.ensembl.domain.raw.RegionMappings;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Sequences;
 import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
@@ -35,16 +38,27 @@ public class EnsemblRESTUtilsTest
 {
 
 	@Test
-	@Ignore
 	public void testGetDNASequence() throws Exception
 	{
 		Sequence sequence = EnsemblRESTUtils.getInstance()
 											.getDNASequence("ENSG00000145692");
 
-		System.out.println(sequence	.getSequence()
-									.substring(0, 100));
+		//		System.out.println(sequence	.getSequence()
+		//									.substring(0, 100));
 		assertNotNull(sequence);
 
+	}
+
+	@Test
+	public void testGetCDNASequence() throws Exception
+	{
+		Sequences sequence = EnsemblRESTUtils	.getInstance()
+												.getCodingDNASequence("ENSG00000145692");
+
+		//		System.out.println(sequence	.get(0)
+		//									.getSequence()
+		//									.substring(0, 100));
+		assertNotNull(sequence);
 	}
 
 	@Test
@@ -77,37 +91,54 @@ public class EnsemblRESTUtilsTest
 	}
 
 	@Test
-	@Ignore
 	public void testGetExonRegions() throws Exception
 	{
 		ExonRegions regions = EnsemblRESTUtils	.getInstance()
 												.getExonRegions("ENSG00000145692");
 
-		System.out.println(JSONHelper.prettyPrint(regions));
+		//System.out.println(JSONHelper.prettyPrint(regions));
+		assertFalse(regions.isEmpty());
+	}
+
+	@Test
+	public void testGetProteinSequences() throws Exception
+	{
+		Sequences sequences = EnsemblRESTUtils	.getInstance()
+												//.withProxy(new RestClient.FiddlerLocalhostProxy())
+												.getProteinSequences("ENSG00000145692");
+
+		//		System.out.println(sequence	.iterator()
+		//									.next()
+		//									.getSequence()
+		//									.substring(0, 100));
+		assertNotNull(sequences);
 	}
 
 	@Test
 	@Ignore
-	public void testGetProteinSequences() throws Exception
-	{
-		Sequences sequence = EnsemblRESTUtils	.getInstance()
-												.withProxy(new RestClient.FiddlerLocalhostProxy())
-												.getProteinSequences("ENSG00000145692");
-
-		System.out.println(sequence	.iterator()
-									.next()
-									.getSequence()
-									.substring(0, 100));
-		assertNotNull(sequence);
-
-	}
-
-	@Test
-	public void testGetInstance() throws Exception
+	public void testGetTranscripts() throws Exception
 	{
 		Transcripts transcripts = EnsemblRESTUtils	.getInstance()
 													.getTranscripts("ENSG00000145692");
 
 		System.out.println(JSONHelper.prettyPrint(transcripts));
+	}
+
+	@Test
+	public void testGetInstance() throws Exception
+	{
+		RegionMappings regionMappings = EnsemblRESTUtils.getInstance()
+														.getRegionMappings("human", "GRCh38", "GRCh37", "5", 79111779, 79132290);
+
+		//System.out.println(JSONHelper.prettyPrint(regionMappings));
+
+		assertEquals(78407602, regionMappings	.getMappings()
+												.get(0)
+												.getMapped()
+												.getStart());
+		assertEquals(78428113, regionMappings	.getMappings()
+												.get(0)
+												.getMapped()
+												.getEnd());
 	}
 }

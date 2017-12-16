@@ -38,6 +38,8 @@ import org.omnaest.genetics.ensembl.domain.Range;
 import org.omnaest.genetics.ensembl.domain.SpeciesAccessor;
 import org.omnaest.genetics.ensembl.domain.Variant;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
+import org.omnaest.genetics.ensembl.domain.raw.RegionLocation;
+import org.omnaest.genetics.ensembl.domain.raw.RegionMappings;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Sequences;
 import org.omnaest.genetics.ensembl.domain.raw.Species;
@@ -52,6 +54,8 @@ import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.cache.JsonFolderFilesCache;
 import org.omnaest.utils.element.CachedElement;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @see EnsemblRESTUtils
@@ -59,6 +63,8 @@ import org.omnaest.utils.rest.client.RestClient.Proxy;
  */
 public class EnsemblUtils
 {
+	private static final Logger LOG = LoggerFactory.getLogger(EnsemblUtils.class);
+
 	public static interface EnsemblDataSetAccessor
 	{
 
@@ -172,11 +178,8 @@ public class EnsemblUtils
 					{
 						Sequence rawSequence = restAccessor.getDNASequence(id);
 						Sequences proteinSequences = restAccessor.getProteinSequences(id);
-						Transcripts transcripts = restAccessor.getTranscripts(id);
-						Variations variations = restAccessor.getVariations(id);
 						ExonRegions exonRegions = restAccessor.getExonRegions(id);
 						GeneLocation geneLocation = this.determineGeneLocation(rawSequence);
-						Map<String, String> exonIdToSequence = this.determineExonSequences(exonRegions);
 
 						return new GeneAccessor()
 						{
@@ -214,8 +217,50 @@ public class EnsemblUtils
 							}
 
 							@Override
+							public GeneLocation getLocation(String referenceAssembly)
+							{
+								GeneLocation retval = null;
+
+								GeneLocation mainLocation = this.getLocation();
+								String chromosome = mainLocation.getChromosome();
+								long start = mainLocation	.getPosition()
+															.getStart();
+								long end = mainLocation	.getPosition()
+														.getEnd();
+								RegionMappings regionMappings = restAccessor.getRegionMappings(	rawSpecies.getName(), mainLocation.getReferenceAssembly(),
+																								referenceAssembly, chromosome, start, end);
+								if (regionMappings != null && regionMappings.getMappings() != null && !regionMappings	.getMappings()
+																														.isEmpty())
+								{
+									RegionLocation regionLocation = regionMappings	.getMappings()
+																					.get(0)
+																					.getMapped();
+									if (regionLocation == null)
+									{
+										LOG.warn("No mapping region found for " + referenceAssembly + " " + chromosome + ":" + start + ":" + end);
+									}
+									else
+									{
+										if (!StringUtils.equalsIgnoreCase(regionLocation.getAssembly(), referenceAssembly))
+										{
+											LOG.warn("Incorrect mapping resolved: " + regionLocation);
+										}
+										else
+										{
+											retval = new GeneLocation(	regionLocation.getSequenceRegionName(), regionLocation.getAssembly(),
+																		new Range(regionLocation.getStart(), regionLocation.getEnd()));
+										}
+									}
+								}
+
+								return retval;
+							}
+
+							@Override
 							public List<Variant> getVariants()
 							{
+
+								Variations variations = restAccessor.getVariations(id);
 								return variations	.stream()
 													.map(variation -> new Variant(	new Range(variation.getStart(), variation.getEnd()),
 																					ListUtils.defaultIfNull(variation.getAlleles())))
@@ -225,6 +270,7 @@ public class EnsemblUtils
 							@Override
 							public List<Exon> getExons()
 							{
+								Map<String, String> exonIdToSequence = determineExonSequences(exonRegions);
 								return exonRegions	.stream()
 													.map(region -> new Exon(new Range(region.getStart(), region.getEnd()),
 																			exonIdToSequence.get(region.getExonId())))
@@ -234,6 +280,7 @@ public class EnsemblUtils
 							@Override
 							public Stream<ProteinTranscriptAccessor> getProteinTranscripts()
 							{
+								Transcripts transcripts = restAccessor.getTranscripts(id);
 								return transcripts	.stream()
 													.filter(transcript -> StringUtils.equalsIgnoreCase(transcript.getParent(), id))
 													.filter(transcript -> transcript.hasBiotype(BioType.protein_coding))
