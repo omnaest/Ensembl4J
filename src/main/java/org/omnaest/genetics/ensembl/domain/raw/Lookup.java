@@ -73,6 +73,19 @@ public class Lookup
 	@JsonProperty
 	private String length;
 
+	@JsonProperty
+	private String description;
+
+	public String getDescription()
+	{
+		return this.description;
+	}
+
+	public void setDescription(String description)
+	{
+		this.description = description;
+	}
+
 	public String getLength()
 	{
 		return this.length;
@@ -256,7 +269,7 @@ public class Lookup
 				+ ", sequenceRegionName=" + this.sequenceRegionName + ", dbType=" + this.dbType + ", isCanonical=" + this.isCanonical + ", strand="
 				+ this.strand + ", id=" + this.id + ", version=" + this.version + ", species=" + this.species + ", assemblyName=" + this.assemblyName
 				+ ", displayName=" + this.displayName + ", start=" + this.start + ", end=" + this.end + ", bioType=" + this.bioType + ", length=" + this.length
-				+ "]";
+				+ ", description=" + this.description + "]";
 	}
 
 }
