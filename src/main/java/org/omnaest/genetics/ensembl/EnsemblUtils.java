@@ -223,9 +223,10 @@ public class EnsemblUtils
 							@Override
 							public List<String> getProteinSequences()
 							{
-								return proteinSequences	.stream()
-														.map(seq -> seq.getSequence())
-														.collect(Collectors.toList());
+								return proteinSequences != null ? proteinSequences	.stream()
+																					.map(seq -> seq.getSequence())
+																					.collect(Collectors.toList())
+										: Collections.emptyList();
 							}
 
 							@Override
@@ -240,33 +241,36 @@ public class EnsemblUtils
 								GeneLocation retval = null;
 
 								GeneLocation mainLocation = this.getLocation();
-								String chromosome = mainLocation.getChromosome();
-								long start = mainLocation	.getPosition()
-															.getStart();
-								long end = mainLocation	.getPosition()
-														.getEnd();
-								RegionMappings regionMappings = restAccessor.getRegionMappings(	rawSpecies.getName(), mainLocation.getReferenceAssembly(),
-																								referenceAssembly, chromosome, start, end);
-								if (regionMappings != null && regionMappings.getMappings() != null && !regionMappings	.getMappings()
-																														.isEmpty())
+								if (mainLocation != null)
 								{
-									RegionLocation regionLocation = regionMappings	.getMappings()
-																					.get(0)
-																					.getMapped();
-									if (regionLocation == null)
+									String chromosome = mainLocation.getChromosome();
+									long start = mainLocation	.getPosition()
+																.getStart();
+									long end = mainLocation	.getPosition()
+															.getEnd();
+									RegionMappings regionMappings = restAccessor.getRegionMappings(	rawSpecies.getName(), mainLocation.getReferenceAssembly(),
+																									referenceAssembly, chromosome, start, end);
+									if (regionMappings != null && regionMappings.getMappings() != null && !regionMappings	.getMappings()
+																															.isEmpty())
 									{
-										LOG.warn("No mapping region found for " + referenceAssembly + " " + chromosome + ":" + start + ":" + end);
-									}
-									else
-									{
-										if (!StringUtils.equalsIgnoreCase(regionLocation.getAssembly(), referenceAssembly))
+										RegionLocation regionLocation = regionMappings	.getMappings()
+																						.get(0)
+																						.getMapped();
+										if (regionLocation == null)
 										{
-											LOG.warn("Incorrect mapping resolved: " + regionLocation);
+											LOG.warn("No mapping region found for " + referenceAssembly + " " + chromosome + ":" + start + ":" + end);
 										}
 										else
 										{
-											retval = new GeneLocation(	regionLocation.getSequenceRegionName(), regionLocation.getAssembly(),
-																		new Range(regionLocation.getStart(), regionLocation.getEnd()));
+											if (!StringUtils.equalsIgnoreCase(regionLocation.getAssembly(), referenceAssembly))
+											{
+												LOG.warn("Incorrect mapping resolved: " + regionLocation);
+											}
+											else
+											{
+												retval = new GeneLocation(	regionLocation.getSequenceRegionName(), regionLocation.getAssembly(),
+																			new Range(regionLocation.getStart(), regionLocation.getEnd()));
+											}
 										}
 									}
 								}
