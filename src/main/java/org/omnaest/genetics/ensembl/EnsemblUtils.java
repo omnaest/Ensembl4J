@@ -248,6 +248,7 @@ public class EnsemblUtils
 																.getStart();
 									long end = mainLocation	.getPosition()
 															.getEnd();
+									int strand = mainLocation.getStrand();
 									RegionMappings regionMappings = restAccessor.getRegionMappings(	rawSpecies.getName(), mainLocation.getReferenceAssembly(),
 																									referenceAssembly, chromosome, start, end);
 									if (regionMappings != null && regionMappings.getMappings() != null && !regionMappings	.getMappings()
@@ -269,7 +270,7 @@ public class EnsemblUtils
 											else
 											{
 												retval = new GeneLocation(	regionLocation.getSequenceRegionName(), regionLocation.getAssembly(),
-																			new Range(regionLocation.getStart(), regionLocation.getEnd()));
+																			new Range(regionLocation.getStart(), regionLocation.getEnd()), strand);
 											}
 										}
 									}
@@ -356,12 +357,13 @@ public class EnsemblUtils
 							{
 								//	chromosome:GRCh38:5:79069717:79089466:1
 								String[] tokens = StringUtils.splitPreserveAllTokens(locationStr, ":");
-								if (tokens.length >= 5)
+								if (tokens.length >= 6)
 								{
 									String chromosome = tokens[2];
 									String referenceAssembly = tokens[1];
 									Range position = new Range(NumberUtils.toLong(tokens[3]), NumberUtils.toLong(tokens[4]));
-									geneLocation = new GeneLocation(chromosome, referenceAssembly, position);
+									int strand = NumberUtils.toInt(tokens[5]);
+									geneLocation = new GeneLocation(chromosome, referenceAssembly, position, strand);
 								}
 							}
 						}

@@ -23,13 +23,20 @@ public class GeneLocation
 	private String	referenceAssembly;
 	private String	chromosome;
 	private Range	position;
+	private int		strand;
 
-	public GeneLocation(String chromosome, String referenceAssembly, Range position)
+	public GeneLocation(String chromosome, String referenceAssembly, Range position, int strand)
 	{
 		super();
 		this.chromosome = chromosome;
 		this.referenceAssembly = referenceAssembly;
 		this.position = position;
+		this.strand = strand;
+	}
+
+	public int getStrand()
+	{
+		return this.strand;
 	}
 
 	public String getChromosome()
@@ -50,7 +57,8 @@ public class GeneLocation
 	@Override
 	public String toString()
 	{
-		return "GeneLocation [referenceAssembly=" + this.referenceAssembly + ", chromosome=" + this.chromosome + ", position=" + this.position + "]";
+		return "GeneLocation [referenceAssembly=" + this.referenceAssembly + ", chromosome=" + this.chromosome + ", position=" + this.position + ", strand="
+				+ this.strand + "]";
 	}
 
 }
