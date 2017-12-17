@@ -37,6 +37,8 @@ import org.omnaest.genetics.ensembl.domain.ProteinTranscriptAccessor;
 import org.omnaest.genetics.ensembl.domain.Range;
 import org.omnaest.genetics.ensembl.domain.SpeciesAccessor;
 import org.omnaest.genetics.ensembl.domain.Variant;
+import org.omnaest.genetics.ensembl.domain.raw.BioType;
+import org.omnaest.genetics.ensembl.domain.raw.ExonRegion;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
 import org.omnaest.genetics.ensembl.domain.raw.RegionLocation;
 import org.omnaest.genetics.ensembl.domain.raw.RegionMappings;
@@ -45,7 +47,6 @@ import org.omnaest.genetics.ensembl.domain.raw.Sequences;
 import org.omnaest.genetics.ensembl.domain.raw.Species;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
 import org.omnaest.genetics.ensembl.domain.raw.Transcript;
-import org.omnaest.genetics.ensembl.domain.raw.Transcript.BioType;
 import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
@@ -199,6 +200,8 @@ public class EnsemblUtils
 						ExonRegions exonRegions = ExceptionUtils.executeSilent(() -> restAccessor.getExonRegions(id), this.restAccessExceptionHandler);
 						GeneLocation geneLocation = this.determineGeneLocation(rawSequence);
 
+						Map<String, ExonRegion> exonIdToExonRegion = this.determineExonRegions();
+
 						return new GeneAccessor()
 						{
 							@Override
@@ -224,6 +227,10 @@ public class EnsemblUtils
 							public List<String> getProteinSequences()
 							{
 								return proteinSequences != null ? proteinSequences	.stream()
+																					.filter(seq -> restAccessor	.getLookUp(restAccessor	.getLookUp(seq.getId())
+																																		.getParent())
+																												.hasBiotype(BioType.PROTEIN_CODING))
+																					.filter(seq -> seq != null)
 																					.map(seq -> seq.getSequence())
 																					.collect(Collectors.toList())
 										: Collections.emptyList();
@@ -306,7 +313,7 @@ public class EnsemblUtils
 								Transcripts transcripts = restAccessor.getTranscripts(id);
 								return transcripts	.stream()
 													.filter(transcript -> StringUtils.equalsIgnoreCase(transcript.getParent(), id))
-													.filter(transcript -> transcript.hasBiotype(BioType.protein_coding))
+													.filter(transcript -> transcript.hasBiotype(BioType.PROTEIN_CODING))
 													.map(rawTanscript -> this.newTranscriptAccessor(rawTanscript));
 							}
 
@@ -333,6 +340,12 @@ public class EnsemblUtils
 
 						};
 
+					}
+
+					private Map<String, ExonRegion> determineExonRegions()
+					{
+						// TODO Auto-generated method stub
+						return null;
 					}
 
 					private Map<String, String> determineExonSequences(ExonRegions exonRegions)

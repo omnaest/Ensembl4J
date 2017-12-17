@@ -19,6 +19,7 @@
 package org.omnaest.genetics.ensembl;
 
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
+import org.omnaest.genetics.ensembl.domain.raw.Lookup;
 import org.omnaest.genetics.ensembl.domain.raw.RegionMappings;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Sequences;
@@ -96,8 +97,16 @@ public class EnsemblRESTUtils
 		 * @param end
 		 * @return
 		 */
-		RegionMappings getRegionMappings(String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome, long start,
-										long end);
+		RegionMappings getRegionMappings(	String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome, long start,
+											long end);
+
+		/**
+		 * Returns the lookup of a given id like ENST00000523732
+		 * 
+		 * @param id
+		 * @return
+		 */
+		Lookup getLookUp(String id);
 	}
 
 	public static EnsembleRESTAccessor getInstance()
@@ -117,7 +126,7 @@ public class EnsemblRESTUtils
 			}
 
 			@Override
-			public RegionMappings getRegionMappings(	String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome,
+			public RegionMappings getRegionMappings(String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome,
 													long start, long end)
 			{
 				RestClient restClient = this.newRestClient();
@@ -198,6 +207,19 @@ public class EnsemblRESTUtils
 										.addPathToken(symbol)
 										.build();
 				return restClient.requestGet(url, XRefs.class);
+			}
+
+			@Override
+			public Lookup getLookUp(String id)
+			{
+				RestClient restClient = this.newRestClient();
+				String url = restClient	.urlBuilder()
+										.setBaseUrl(this.baseUrl)
+										.addPathToken("lookup")
+										.addPathToken("id")
+										.addPathToken(id)
+										.build();
+				return restClient.requestGet(url, Lookup.class);
 			}
 
 			@Override

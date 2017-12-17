@@ -76,11 +76,6 @@ public class Transcript
 	@JsonProperty
 	private String tag;
 
-	public static enum BioType
-	{
-		processed_transcript, retained_intron, protein_coding
-	}
-
 	public String getTag()
 	{
 		return this.tag;

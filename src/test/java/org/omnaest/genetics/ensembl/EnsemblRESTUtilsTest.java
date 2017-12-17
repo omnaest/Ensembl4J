@@ -21,10 +21,13 @@ package org.omnaest.genetics.ensembl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Ignore;
 import org.junit.Test;
+import org.omnaest.genetics.ensembl.domain.raw.BioType;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
+import org.omnaest.genetics.ensembl.domain.raw.Lookup;
 import org.omnaest.genetics.ensembl.domain.raw.RegionMappings;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Sequences;
@@ -140,5 +143,16 @@ public class EnsemblRESTUtilsTest
 												.get(0)
 												.getMapped()
 												.getEnd());
+	}
+
+	@Test
+	public void testGetLookUp() throws Exception
+	{
+		Lookup lookUp = EnsemblRESTUtils.getInstance()
+										.getLookUp("ENST00000523732");
+		//System.out.println(JSONHelper.prettyPrint(lookUp));
+		assertEquals("protein_coding", lookUp.getBioType());
+		assertEquals("ENSG00000132837", lookUp.getParent());
+		assertTrue(lookUp.hasBiotype(BioType.PROTEIN_CODING));
 	}
 }

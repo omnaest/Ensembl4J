@@ -135,4 +135,18 @@ public class EnsemblUtilsTest
 		assertEquals("5", location.getChromosome());
 	}
 
+	@Test
+	public void testGetProteinSequences() throws Exception
+	{
+		List<String> proteinSequences = EnsemblUtils.getInstance()
+													.findSpecies("human")
+													.get()
+													.findGene("DMGDH")
+													.get()
+													.getProteinSequences();
+
+		//		System.out.println(JSONHelper.prettyPrint(proteinSequences));
+		assertEquals(2, proteinSequences.size());
+	}
+
 }
