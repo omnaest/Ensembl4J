@@ -49,11 +49,14 @@ import org.omnaest.genetics.ensembl.domain.raw.Transcript.BioType;
 import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
+import org.omnaest.utils.ExceptionUtils;
+import org.omnaest.utils.ExceptionUtils.RuntimeExceptionHandler;
 import org.omnaest.utils.ListUtils;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.cache.JsonFolderFilesCache;
 import org.omnaest.utils.element.CachedElement;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
+import org.omnaest.utils.rest.client.RestHelper.RESTAccessExeption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -174,11 +177,26 @@ public class EnsemblUtils
 									.findFirst();
 					}
 
+					private RuntimeExceptionHandler restAccessExceptionHandler = e ->
+					{
+						if (e instanceof RESTAccessExeption)
+						{
+							if (((RESTAccessExeption) e).getStatusCode() != 400)
+							{
+								throw e;
+							}
+						}
+						else
+						{
+							throw e;
+						}
+					};
+
 					private GeneAccessor createGeneAccessor(String id)
 					{
-						Sequence rawSequence = restAccessor.getDNASequence(id);
-						Sequences proteinSequences = restAccessor.getProteinSequences(id);
-						ExonRegions exonRegions = restAccessor.getExonRegions(id);
+						Sequence rawSequence = ExceptionUtils.executeSilent(() -> restAccessor.getDNASequence(id), this.restAccessExceptionHandler);
+						Sequences proteinSequences = ExceptionUtils.executeSilent(() -> restAccessor.getProteinSequences(id), this.restAccessExceptionHandler);
+						ExonRegions exonRegions = ExceptionUtils.executeSilent(() -> restAccessor.getExonRegions(id), this.restAccessExceptionHandler);
 						GeneLocation geneLocation = this.determineGeneLocation(rawSequence);
 
 						return new GeneAccessor()
@@ -309,6 +327,7 @@ public class EnsemblUtils
 							}
 
 						};
+
 					}
 
 					private Map<String, String> determineExonSequences(ExonRegions exonRegions)
@@ -326,17 +345,20 @@ public class EnsemblUtils
 					{
 						GeneLocation geneLocation = null;
 
-						String locationStr = rawSequence.getDescription();
-						if (locationStr != null)
+						if (rawSequence != null)
 						{
-							//	chromosome:GRCh38:5:79069717:79089466:1
-							String[] tokens = StringUtils.splitPreserveAllTokens(locationStr, ":");
-							if (tokens.length >= 5)
+							String locationStr = rawSequence.getDescription();
+							if (locationStr != null)
 							{
-								String chromosome = tokens[2];
-								String referenceAssembly = tokens[1];
-								Range position = new Range(NumberUtils.toLong(tokens[3]), NumberUtils.toLong(tokens[4]));
-								geneLocation = new GeneLocation(chromosome, referenceAssembly, position);
+								//	chromosome:GRCh38:5:79069717:79089466:1
+								String[] tokens = StringUtils.splitPreserveAllTokens(locationStr, ":");
+								if (tokens.length >= 5)
+								{
+									String chromosome = tokens[2];
+									String referenceAssembly = tokens[1];
+									Range position = new Range(NumberUtils.toLong(tokens[3]), NumberUtils.toLong(tokens[4]));
+									geneLocation = new GeneLocation(chromosome, referenceAssembly, position);
+								}
 							}
 						}
 

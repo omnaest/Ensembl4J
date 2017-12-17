@@ -101,6 +101,7 @@ public class EnsemblUtilsTest
 	}
 
 	@Test
+	@Ignore
 	public void testGetProteinTranscripts() throws Exception
 	{
 		String proteinSequence = EnsemblUtils	.getInstance()
