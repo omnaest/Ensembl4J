@@ -55,7 +55,7 @@ import org.omnaest.utils.ExceptionUtils.RuntimeExceptionHandler;
 import org.omnaest.utils.ListUtils;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.cache.JsonFolderFilesCache;
-import org.omnaest.utils.element.CachedElement;
+import org.omnaest.utils.element.cached.CachedElement;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
 import org.omnaest.utils.rest.client.RestHelper.RESTAccessExeption;
 import org.slf4j.Logger;
