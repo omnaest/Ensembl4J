@@ -27,12 +27,15 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.omnaest.genetics.ensembl.domain.raw.BioType;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
+import org.omnaest.genetics.ensembl.domain.raw.ExternalXRefs;
 import org.omnaest.genetics.ensembl.domain.raw.Lookup;
 import org.omnaest.genetics.ensembl.domain.raw.RegionMappings;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Sequences;
 import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
+import org.omnaest.genetics.ensembl.domain.raw.VariantInfo;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
+import org.omnaest.genetics.ensembl.domain.raw.XRef;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.JSONHelper;
 import org.omnaest.utils.rest.client.RestClient;
@@ -40,119 +43,157 @@ import org.omnaest.utils.rest.client.RestClient;
 public class EnsemblRESTUtilsTest
 {
 
-	@Test
-	public void testGetDNASequence() throws Exception
-	{
-		Sequence sequence = EnsemblRESTUtils.getInstance()
-											.getDNASequence("ENSG00000145692");
+    @Test
+    public void testGetDNASequence() throws Exception
+    {
+        Sequence sequence = EnsemblRESTUtils.getInstance()
+                                            .getDNASequence("ENSG00000145692");
 
-		//		System.out.println(sequence	.getSequence()
-		//									.substring(0, 100));
-		assertNotNull(sequence);
+        //		System.out.println(sequence	.getSequence()
+        //									.substring(0, 100));
+        assertNotNull(sequence);
 
-	}
+    }
 
-	@Test
-	public void testGetCDNASequence() throws Exception
-	{
-		Sequences sequence = EnsemblRESTUtils	.getInstance()
-												.getCodingDNASequence("ENSG00000145692");
+    @Test
+    public void testGetCDNASequence() throws Exception
+    {
+        Sequences sequence = EnsemblRESTUtils.getInstance()
+                                             .getCodingDNASequence("ENSG00000145692");
 
-		//		System.out.println(sequence	.get(0)
-		//									.getSequence()
-		//									.substring(0, 100));
-		assertNotNull(sequence);
-	}
+        //		System.out.println(sequence	.get(0)
+        //									.getSequence()
+        //									.substring(0, 100));
+        assertNotNull(sequence);
+    }
 
-	@Test
-	@Ignore
-	public void testGetSpecies() throws Exception
-	{
-		String json = JSONHelper.prettyPrint(EnsemblRESTUtils	.getInstance()
-																.getSpecies());
-		System.out.println(json);
-	}
+    @Test
+    @Ignore
+    public void testGetSpecies() throws Exception
+    {
+        String json = JSONHelper.prettyPrint(EnsemblRESTUtils.getInstance()
+                                                             .getSpecies());
+        System.out.println(json);
+    }
 
-	@Test
-	@Ignore
-	public void testGetXRefs() throws Exception
-	{
-		XRefs xRefs = EnsemblRESTUtils	.getInstance()
-										.withProxy(new RestClient.FiddlerLocalhostProxy())
-										.getXRefs("homo_sapiens", "BHMT");
-		System.out.println(JSONHelper.prettyPrint(xRefs));
-	}
+    @Test
+    @Ignore
+    public void testGetXRefs() throws Exception
+    {
+        XRefs xRefs = EnsemblRESTUtils.getInstance()
+                                      .withProxy(new RestClient.FiddlerLocalhostProxy())
+                                      .getXRefs("homo_sapiens", "BHMT");
+        System.out.println(JSONHelper.prettyPrint(xRefs));
+    }
 
-	@Test
-	@Ignore
-	public void testGetVariations() throws Exception
-	{
-		Variations variations = EnsemblRESTUtils.getInstance()
-												.getVariations("ENSG00000145692");
+    @Test
+    @Ignore
+    public void testGetXRefsForExternalDB() throws Exception
+    {
+        XRef xRef = EnsemblRESTUtils.getInstance()
+                                    .withProxy(new RestClient.FiddlerLocalhostProxy())
+                                    .getXRefs("homo_sapiens", "BHMT")
+                                    .get(0);
+        ExternalXRefs externalXRefs = EnsemblRESTUtils.getInstance()
+                                                      .withProxy(new RestClient.FiddlerLocalhostProxy())
+                                                      .getXRefsForExternalDatabase(xRef.getId(), "WikiGene");
+        System.out.println(JSONHelper.prettyPrint(externalXRefs));
+    }
 
-		System.out.println(JSONHelper.prettyPrint(variations));
-	}
+    @Test
+    @Ignore
+    public void testGetXRefsForExternalDBByName() throws Exception
+    {
+        ExternalXRefs externalXRefs = EnsemblRESTUtils.getInstance()
+                                                      //                                                      .withProxy(new RestClient.FiddlerLocalhostProxy())
+                                                      .getXRefsForExternalDatabaseByName("homo_sapiens", "BHMT", "Uniprot_gn");
 
-	@Test
-	public void testGetExonRegions() throws Exception
-	{
-		ExonRegions regions = EnsemblRESTUtils	.getInstance()
-												.getExonRegions("ENSG00000145692");
+        System.out.println(JSONHelper.prettyPrint(externalXRefs));
+    }
 
-		//System.out.println(JSONHelper.prettyPrint(regions));
-		assertFalse(regions.isEmpty());
-	}
+    @Test
+    @Ignore
+    public void testGetVariations() throws Exception
+    {
+        Variations variations = EnsemblRESTUtils.getInstance()
+                                                .getVariations("ENSG00000145692");
 
-	@Test
-	public void testGetProteinSequences() throws Exception
-	{
-		Sequences sequences = EnsemblRESTUtils	.getInstance()
-												//.withProxy(new RestClient.FiddlerLocalhostProxy())
-												.getProteinSequences("ENSG00000145692");
+        System.out.println(JSONHelper.prettyPrint(variations));
+    }
 
-		//		System.out.println(sequence	.iterator()
-		//									.next()
-		//									.getSequence()
-		//									.substring(0, 100));
-		assertNotNull(sequences);
-	}
+    @Test
+    public void testGetExonRegions() throws Exception
+    {
+        ExonRegions regions = EnsemblRESTUtils.getInstance()
+                                              .getExonRegions("ENSG00000145692");
 
-	@Test
-	@Ignore
-	public void testGetTranscripts() throws Exception
-	{
-		Transcripts transcripts = EnsemblRESTUtils	.getInstance()
-													.getTranscripts("ENSG00000145692");
+        //System.out.println(JSONHelper.prettyPrint(regions));
+        assertFalse(regions.isEmpty());
+    }
 
-		System.out.println(JSONHelper.prettyPrint(transcripts));
-	}
+    @Test
+    public void testGetProteinSequences() throws Exception
+    {
+        Sequences sequences = EnsemblRESTUtils.getInstance()
+                                              //.withProxy(new RestClient.FiddlerLocalhostProxy())
+                                              .getProteinSequences("ENSG00000145692");
 
-	@Test
-	public void testGetInstance() throws Exception
-	{
-		RegionMappings regionMappings = EnsemblRESTUtils.getInstance()
-														.getRegionMappings("human", "GRCh38", "GRCh37", "5", 79111779, 79132290);
+        //		System.out.println(sequence	.iterator()
+        //									.next()
+        //									.getSequence()
+        //									.substring(0, 100));
+        assertNotNull(sequences);
+    }
 
-		//System.out.println(JSONHelper.prettyPrint(regionMappings));
+    @Test
+    @Ignore
+    public void testGetTranscripts() throws Exception
+    {
+        Transcripts transcripts = EnsemblRESTUtils.getInstance()
+                                                  .getTranscripts("ENSG00000145692");
 
-		assertEquals(78407602, regionMappings	.getMappings()
-												.get(0)
-												.getMapped()
-												.getStart());
-		assertEquals(78428113, regionMappings	.getMappings()
-												.get(0)
-												.getMapped()
-												.getEnd());
-	}
+        System.out.println(JSONHelper.prettyPrint(transcripts));
+    }
 
-	@Test
-	public void testGetLookUp() throws Exception
-	{
-		Lookup lookUp = EnsemblRESTUtils.getInstance()
-										.getLookUp("ENST00000523732");
-		//System.out.println(JSONHelper.prettyPrint(lookUp));
-		assertEquals("protein_coding", lookUp.getBioType());
-		assertEquals("ENSG00000132837", lookUp.getParent());
-		assertTrue(lookUp.hasBiotype(BioType.PROTEIN_CODING));
-	}
+    @Test
+    public void testGetInstance() throws Exception
+    {
+        RegionMappings regionMappings = EnsemblRESTUtils.getInstance()
+                                                        .getRegionMappings("human", "GRCh38", "GRCh37", "5", 79111779, 79132290);
+
+        //System.out.println(JSONHelper.prettyPrint(regionMappings));
+
+        assertEquals(78407602, regionMappings.getMappings()
+                                             .get(0)
+                                             .getMapped()
+                                             .getStart());
+        assertEquals(78428113, regionMappings.getMappings()
+                                             .get(0)
+                                             .getMapped()
+                                             .getEnd());
+    }
+
+    @Test
+    public void testGetLookUp() throws Exception
+    {
+        Lookup lookUp = EnsemblRESTUtils.getInstance()
+                                        .getLookUp("ENST00000523732");
+        //System.out.println(JSONHelper.prettyPrint(lookUp));
+        assertEquals("protein_coding", lookUp.getBioType());
+        assertEquals("ENSG00000132837", lookUp.getParent());
+        assertTrue(lookUp.hasBiotype(BioType.PROTEIN_CODING));
+    }
+
+    @Test
+    @Ignore
+    public void testGetVariantDetails() throws Exception
+    {
+        VariantInfo variant = EnsemblRESTUtils.getInstance()
+                                              .getVariantDetails("homo_sapiens", "rs699"
+        //                                                             "rs682985"
+        );
+
+        System.out.println(JSONHelper.prettyPrint(variant));
+    }
+
 }

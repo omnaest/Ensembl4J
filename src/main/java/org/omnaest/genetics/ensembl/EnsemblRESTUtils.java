@@ -18,13 +18,17 @@
 */
 package org.omnaest.genetics.ensembl;
 
+import java.util.concurrent.TimeUnit;
+
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
+import org.omnaest.genetics.ensembl.domain.raw.ExternalXRefs;
 import org.omnaest.genetics.ensembl.domain.raw.Lookup;
 import org.omnaest.genetics.ensembl.domain.raw.RegionMappings;
 import org.omnaest.genetics.ensembl.domain.raw.Sequence;
 import org.omnaest.genetics.ensembl.domain.raw.Sequences;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
 import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
+import org.omnaest.genetics.ensembl.domain.raw.VariantInfo;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.cache.Cache;
@@ -43,207 +47,289 @@ import org.omnaest.utils.rest.client.RestClient.Proxy;
 public class EnsemblRESTUtils
 {
 
-	public static interface EnsembleRESTAccessor
-	{
+    public static interface EnsembleRESTAccessor
+    {
 
-		EnsembleRESTAccessor withBaseUrl(String baseUrl);
+        EnsembleRESTAccessor withBaseUrl(String baseUrl);
 
-		EnsembleRESTAccessor withProxy(Proxy proxy);
+        EnsembleRESTAccessor withProxy(Proxy proxy);
 
-		EnsembleRESTAccessor usingCache(Cache cache);
+        EnsembleRESTAccessor usingCache(Cache cache);
 
-		XRefs getXRefs(String species, String symbol);
+        XRefs getXRefs(String species, String symbol);
 
-		SpeciesList getSpecies();
+        XRefs getXRefs(String id);
 
-		/**
-		 * Returns the genome DNA sequence
-		 * 
-		 * @param id
-		 * @return
-		 */
-		Sequence getDNASequence(String id);
+        SpeciesList getSpecies();
 
-		/**
-		 * Returns the cDNA sequence
-		 * 
-		 * @param id
-		 * @return
-		 */
-		Sequences getCodingDNASequence(String id);
+        /**
+         * Returns the genome DNA sequence
+         * 
+         * @param id
+         * @return
+         */
+        Sequence getDNASequence(String id);
 
-		/**
-		 * Returns the amino acid sequence of the protein
-		 * 
-		 * @param id
-		 * @return
-		 */
-		Sequences getProteinSequences(String id);
+        /**
+         * Returns the cDNA sequence
+         * 
+         * @param id
+         * @return
+         */
+        Sequences getCodingDNASequence(String id);
 
-		Variations getVariations(String id);
+        /**
+         * Returns the amino acid sequence of the protein
+         * 
+         * @param id
+         * @return
+         */
+        Sequences getProteinSequences(String id);
 
-		Transcripts getTranscripts(String id);
+        Variations getVariations(String id);
 
-		ExonRegions getExonRegions(String id);
+        Transcripts getTranscripts(String id);
 
-		/**
-		 * Returns the mapping between regions of two reference genomes (assembly)
-		 * 
-		 * @param species
-		 * @param sourceReferenceAssembly
-		 * @param targetReferenceAssembly
-		 * @param chromosome
-		 * @param start
-		 * @param end
-		 * @return
-		 */
-		RegionMappings getRegionMappings(	String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome, long start,
-											long end);
+        ExonRegions getExonRegions(String id);
 
-		/**
-		 * Returns the lookup of a given id like ENST00000523732
-		 * 
-		 * @param id
-		 * @return
-		 */
-		Lookup getLookUp(String id);
-	}
+        /**
+         * Returns the mapping between regions of two reference genomes (assembly)
+         * 
+         * @param species
+         * @param sourceReferenceAssembly
+         * @param targetReferenceAssembly
+         * @param chromosome
+         * @param start
+         * @param end
+         * @return
+         */
+        RegionMappings getRegionMappings(String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome, long start,
+                                         long end);
 
-	public static EnsembleRESTAccessor getInstance()
-	{
-		return new EnsembleRESTAccessor()
-		{
-			private Proxy	proxy	= null;
-			private String	baseUrl	= "http://rest.ensembl.org";
-			private Cache	cache	= null;
+        /**
+         * Returns the lookup of a given id like ENST00000523732
+         * 
+         * @param id
+         * @return
+         */
+        Lookup getLookUp(String id);
 
-			@Override
-			public ExonRegions getExonRegions(String id)
-			{
-				String url = this.baseUrl + "/overlap/id/" + id + "?feature=exon";
-				return this	.newRestClient()
-							.requestGet(url, ExonRegions.class);
-			}
+        ExternalXRefs getXRefsForExternalDatabase(String id, String externalDatabase);
 
-			@Override
-			public RegionMappings getRegionMappings(String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome,
-													long start, long end)
-			{
-				RestClient restClient = this.newRestClient();
-				String url = restClient	.urlBuilder()
-										.setBaseUrl(this.baseUrl)
-										.addPathToken("map")
-										.addPathToken(species)
-										.addPathToken(sourceReferenceAssembly)
-										.addPathToken(chromosome + ":" + start + ":" + end)
-										.addPathToken(targetReferenceAssembly)
-										.build();
-				return restClient.requestGet(url, RegionMappings.class);
-			}
+        ExternalXRefs getXRefsForExternalDatabase(String id);
 
-			@Override
-			public Variations getVariations(String id)
-			{
-				String url = this.baseUrl + "/overlap/id/" + id + "?feature=variation";
-				return this	.newRestClient()
-							.requestGet(url, Variations.class);
-			}
+        ExternalXRefs getXRefsForExternalDatabaseByName(String species, String name, String externalDatabase);
 
-			@Override
-			public Transcripts getTranscripts(String id)
-			{
-				String url = this.baseUrl + "/overlap/id/" + id + "?feature=transcript";
-				return this	.newRestClient()
-							.requestGet(url, Transcripts.class);
-			}
+        VariantInfo getVariantDetails(String species, String variantId);
 
-			@Override
-			public Sequence getDNASequence(String id)
-			{
-				String url = this.baseUrl + "/sequence/id/" + id;
-				return this	.newRestClient()
-							.requestGet(url, Sequence.class);
-			}
+    }
 
-			@Override
-			public Sequences getCodingDNASequence(String id)
-			{
-				String url = this.baseUrl + "/sequence/id/" + id + "?type=cdna&multiple_sequences=true";
-				return this	.newRestClient()
-							.requestGet(url, Sequences.class);
-			}
+    public static EnsembleRESTAccessor getInstance()
+    {
+        return new EnsembleRESTAccessor()
+        {
+            private Proxy  proxy   = null;
+            private String baseUrl = "http://rest.ensembl.org";
+            private Cache  cache   = null;
 
-			@Override
-			public Sequences getProteinSequences(String id)
-			{
-				String url = this.baseUrl + "/sequence/id/" + id + "?type=protein&multiple_sequences=true";
-				return this	.newRestClient()
-							.requestGet(url, Sequences.class);
-			}
+            @Override
+            public ExonRegions getExonRegions(String id)
+            {
+                String url = this.baseUrl + "/overlap/id/" + id + "?feature=exon";
+                return this.newRestClient()
+                           .requestGet(url, ExonRegions.class);
+            }
 
-			private RestClient newRestClient()
-			{
-				return new JSONRestClient()	.withProxy(this.proxy)
-											.withCache(this.cache);
-			}
+            @Override
+            public RegionMappings getRegionMappings(String species, String sourceReferenceAssembly, String targetReferenceAssembly, String chromosome,
+                                                    long start, long end)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("map")
+                                       .addPathToken(species)
+                                       .addPathToken(sourceReferenceAssembly)
+                                       .addPathToken(chromosome + ":" + start + ":" + end)
+                                       .addPathToken(targetReferenceAssembly)
+                                       .build();
+                return restClient.requestGet(url, RegionMappings.class);
+            }
 
-			@Override
-			public SpeciesList getSpecies()
-			{
-				String url = this.baseUrl + "/info/species";
-				return this	.newRestClient()
-							.requestGet(url, SpeciesList.class);
-			}
+            @Override
+            public Variations getVariations(String id)
+            {
+                String url = this.baseUrl + "/overlap/id/" + id + "?feature=variation";
+                return this.newRestClient()
+                           .requestGet(url, Variations.class);
+            }
 
-			@Override
-			public XRefs getXRefs(String species, String symbol)
-			{
-				RestClient restClient = this.newRestClient();
-				String url = restClient	.urlBuilder()
-										.setBaseUrl(this.baseUrl)
-										.addPathToken("xrefs")
-										.addPathToken("symbol")
-										.addPathToken(species)
-										.addPathToken(symbol)
-										.build();
-				return restClient.requestGet(url, XRefs.class);
-			}
+            @Override
+            public Transcripts getTranscripts(String id)
+            {
+                String url = this.baseUrl + "/overlap/id/" + id + "?feature=transcript";
+                return this.newRestClient()
+                           .requestGet(url, Transcripts.class);
+            }
 
-			@Override
-			public Lookup getLookUp(String id)
-			{
-				RestClient restClient = this.newRestClient();
-				String url = restClient	.urlBuilder()
-										.setBaseUrl(this.baseUrl)
-										.addPathToken("lookup")
-										.addPathToken("id")
-										.addPathToken(id)
-										.build();
-				return restClient.requestGet(url, Lookup.class);
-			}
+            @Override
+            public Sequence getDNASequence(String id)
+            {
+                String url = this.baseUrl + "/sequence/id/" + id;
+                return this.newRestClient()
+                           .requestGet(url, Sequence.class);
+            }
 
-			@Override
-			public EnsembleRESTAccessor withProxy(Proxy proxy)
-			{
-				this.proxy = proxy;
-				return this;
-			}
+            @Override
+            public Sequences getCodingDNASequence(String id)
+            {
+                String url = this.baseUrl + "/sequence/id/" + id + "?type=cdna&multiple_sequences=true";
+                return this.newRestClient()
+                           .requestGet(url, Sequences.class);
+            }
 
-			@Override
-			public EnsembleRESTAccessor withBaseUrl(String baseUrl)
-			{
-				this.baseUrl = baseUrl;
-				return this;
-			}
+            @Override
+            public Sequences getProteinSequences(String id)
+            {
+                String url = this.baseUrl + "/sequence/id/" + id + "?type=protein&multiple_sequences=true";
+                return this.newRestClient()
+                           .requestGet(url, Sequences.class);
+            }
 
-			@Override
-			public EnsembleRESTAccessor usingCache(Cache cache)
-			{
-				this.cache = cache;
-				return this;
-			}
+            @Override
+            public VariantInfo getVariantDetails(String species, String variantId)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("variation")
+                                       .addPathToken(species)
+                                       .addPathToken(variantId)
+                                       .addQueryParameter("phenotypes", "1")
+                                       .build();
 
-		};
-	}
+                return restClient.requestGet(url, VariantInfo.class);
+            }
+
+            private RestClient newRestClient()
+            {
+                return new JSONRestClient().withProxy(this.proxy)
+                                           .withCache(this.cache)
+                                           .withRetry(10, 6, TimeUnit.SECONDS);
+            }
+
+            @Override
+            public SpeciesList getSpecies()
+            {
+                String url = this.baseUrl + "/info/species";
+                return this.newRestClient()
+                           .requestGet(url, SpeciesList.class);
+            }
+
+            @Override
+            public XRefs getXRefs(String species, String symbol)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("xrefs")
+                                       .addPathToken("symbol")
+                                       .addPathToken(species)
+                                       .addPathToken(symbol)
+                                       .build();
+                return restClient.requestGet(url, XRefs.class);
+            }
+
+            @Override
+            public XRefs getXRefs(String id)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("xrefs")
+                                       .addPathToken("id")
+                                       .addPathToken(id)
+                                       .build();
+                return restClient.requestGet(url, XRefs.class);
+            }
+
+            @Override
+            public ExternalXRefs getXRefsForExternalDatabase(String id, String externalDatabase)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("xrefs")
+                                       .addPathToken("id")
+                                       .addPathToken(id)
+                                       .addQueryParameter("external_db", externalDatabase)
+                                       .build();
+                return restClient.requestGet(url, ExternalXRefs.class);
+            }
+
+            @Override
+            public ExternalXRefs getXRefsForExternalDatabaseByName(String species, String name, String externalDatabase)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("xrefs")
+                                       .addPathToken("name")
+                                       .addPathToken(species)
+                                       .addPathToken(name)
+                                       .addQueryParameter("external_db", externalDatabase)
+                                       .build();
+                return restClient.requestGet(url, ExternalXRefs.class);
+            }
+
+            @Override
+            public ExternalXRefs getXRefsForExternalDatabase(String id)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("xrefs")
+                                       .addPathToken("id")
+                                       .addPathToken(id)
+                                       .build();
+                return restClient.requestGet(url, ExternalXRefs.class);
+            }
+
+            @Override
+            public Lookup getLookUp(String id)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("lookup")
+                                       .addPathToken("id")
+                                       .addPathToken(id)
+                                       .build();
+                return restClient.requestGet(url, Lookup.class);
+            }
+
+            @Override
+            public EnsembleRESTAccessor withProxy(Proxy proxy)
+            {
+                this.proxy = proxy;
+                return this;
+            }
+
+            @Override
+            public EnsembleRESTAccessor withBaseUrl(String baseUrl)
+            {
+                this.baseUrl = baseUrl;
+                return this;
+            }
+
+            @Override
+            public EnsembleRESTAccessor usingCache(Cache cache)
+            {
+                this.cache = cache;
+                return this;
+            }
+
+        };
+    }
 
 }

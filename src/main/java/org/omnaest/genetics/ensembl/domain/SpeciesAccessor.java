@@ -23,28 +23,36 @@ import java.util.stream.Stream;
 
 public interface SpeciesAccessor
 {
-	/**
-	 * E.g. "Homo sapiens"
-	 * 
-	 * @return
-	 */
-	public String getName();
+    /**
+     * E.g. "Homo sapiens"
+     * 
+     * @return
+     */
+    public String getName();
 
-	/**
-	 * E.g. "human"
-	 * 
-	 * @return
-	 */
-	public String getDisplayName();
+    /**
+     * E.g. "human"
+     * 
+     * @return
+     */
+    public String getDisplayName();
 
-	public Stream<String> getAliases();
+    public Stream<String> getAliases();
 
-	/**
-	 * Finds a gene by name, e.g. "BHMT" for homo sapiens
-	 * 
-	 * @param symbol
-	 * @return {@link GeneAccessor}
-	 */
-	public Optional<GeneAccessor> findGene(String symbol);
+    /**
+     * Finds a gene by name, e.g. "BHMT" for homo sapiens
+     * 
+     * @param symbol
+     * @return {@link GeneAccessor}
+     */
+    public Optional<GeneAccessor> findGene(String symbol);
+
+    /**
+     * Returns the details of a given mutation like e.g. "rs682985"
+     * 
+     * @param string
+     * @return
+     */
+    public VariantDetail findVariantDetail(String variantId);
 
 }

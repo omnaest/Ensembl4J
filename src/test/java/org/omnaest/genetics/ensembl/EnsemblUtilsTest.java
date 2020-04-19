@@ -21,132 +21,163 @@ package org.omnaest.genetics.ensembl;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.Ignore;
 import org.junit.Test;
 import org.omnaest.genetics.ensembl.domain.Exon;
 import org.omnaest.genetics.ensembl.domain.GeneLocation;
+import org.omnaest.genetics.ensembl.domain.SpeciesAccessor;
 import org.omnaest.genetics.ensembl.domain.Variant;
+import org.omnaest.genetics.ensembl.domain.VariantDetail.VariantConsequence;
 import org.omnaest.utils.JSONHelper;
 
 public class EnsemblUtilsTest
 {
 
-	@Test
-	@Ignore
-	public void testGetInstance() throws Exception
-	{
-		GeneLocation location = EnsemblUtils.getInstance()
-											.findSpecies("human")
-											.get()
-											.findGene("BHMT")
-											.get()
-											.getLocation();
-		//System.out.println(location);
+    @Test
+    @Ignore
+    public void testGetInstance() throws Exception
+    {
+        GeneLocation location = EnsemblUtils.getInstance()
+                                            .findSpecies("human")
+                                            .get()
+                                            .findGene("BHMT")
+                                            .get()
+                                            .getLocation();
+        //System.out.println(location);
 
-		assertEquals(5, location.getChromosome());
-		assertEquals("GRCh38", location.getReferenceAssembly());
-		assertEquals(79111779, location	.getPosition()
-										.getStart());
-		assertEquals(79132290, location	.getPosition()
-										.getEnd());
-	}
+        assertEquals(5, location.getChromosome());
+        assertEquals("GRCh38", location.getReferenceAssembly());
+        assertEquals(79111779, location.getPosition()
+                                       .getStart());
+        assertEquals(79132290, location.getPosition()
+                                       .getEnd());
+    }
 
-	@Test
-	@Ignore
-	public void testGetILocation() throws Exception
-	{
-		GeneLocation location = EnsemblUtils.getInstance()
-											.findSpecies("Homo sapiens (Human)")
-											.get()
-											.findGene("BHMT")
-											.get()
-											.getLocation();
-		//System.out.println(location);
+    @Test
+    @Ignore
+    public void testGetILocation() throws Exception
+    {
+        GeneLocation location = EnsemblUtils.getInstance()
+                                            .findSpecies("Homo sapiens (Human)")
+                                            .get()
+                                            .findGene("BHMT")
+                                            .get()
+                                            .getLocation();
+        //System.out.println(location);
 
-		assertEquals("5", location.getChromosome());
-		assertEquals("GRCh38", location.getReferenceAssembly());
-		assertEquals(79111779, location	.getPosition()
-										.getStart());
-		assertEquals(79132290, location	.getPosition()
-										.getEnd());
-	}
+        assertEquals("5", location.getChromosome());
+        assertEquals("GRCh38", location.getReferenceAssembly());
+        assertEquals(79111779, location.getPosition()
+                                       .getStart());
+        assertEquals(79132290, location.getPosition()
+                                       .getEnd());
+    }
 
-	@Test
-	@Ignore
-	public void testGetVariants() throws Exception
-	{
-		List<Variant> variants = EnsemblUtils	.getInstance()
-												.findSpecies("human")
-												.get()
-												.findGene("BHMT")
-												.get()
-												.getVariants();
-		System.out.println(variants);
+    @Test
+    @Ignore
+    public void testGetVariants() throws Exception
+    {
+        List<Variant> variants = EnsemblUtils.getInstance()
+                                             .findSpecies("human")
+                                             .get()
+                                             .findGene("BHMT")
+                                             .get()
+                                             .getVariants();
+        System.out.println(variants);
 
-	}
+    }
 
-	@Test
-	@Ignore
-	public void testGetExons() throws Exception
-	{
-		List<Exon> exons = EnsemblUtils	.getInstance()
-										.findSpecies("human")
-										.get()
-										.findGene("BHMT")
-										.get()
-										.getExons();
-		System.out.println(JSONHelper.prettyPrint(exons));
+    @Test
+    @Ignore
+    public void testGetUniprotId() throws Exception
+    {
+        String uniprotId = EnsemblUtils.getInstance()
+                                       .findSpecies("human")
+                                       .get()
+                                       .findGene("BHMT")
+                                       .get()
+                                       .getUniprotId();
+        System.out.println(uniprotId);
 
-	}
+    }
 
-	@Test
-	@Ignore
-	public void testGetProteinTranscripts() throws Exception
-	{
-		String proteinSequence = EnsemblUtils	.getInstance()
-												.findSpecies("human")
-												.get()
-												.findGene("BHMT")
-												.get()
-												.getProteinTranscripts()
-												.findFirst()
-												.get()
-												.getProteinSequence();
-		System.out.println(proteinSequence.substring(0, 100));
+    @Test
+    @Ignore
+    public void testGetExons() throws Exception
+    {
+        List<Exon> exons = EnsemblUtils.getInstance()
+                                       .findSpecies("human")
+                                       .get()
+                                       .findGene("BHMT")
+                                       .get()
+                                       .getExons();
+        System.out.println(JSONHelper.prettyPrint(exons));
 
-	}
+    }
 
-	@Test
-	public void testReferenceLocation() throws Exception
-	{
-		GeneLocation location = EnsemblUtils.getInstance()
-											.findSpecies("human")
-											.get()
-											.findGene("BHMT")
-											.get()
-											.getLocation("GRCh37");
+    @Test
+    @Ignore
+    public void testGetProteinTranscripts() throws Exception
+    {
+        String proteinSequence = EnsemblUtils.getInstance()
+                                             .findSpecies("human")
+                                             .get()
+                                             .findGene("BHMT")
+                                             .get()
+                                             .getProteinTranscripts()
+                                             .findFirst()
+                                             .get()
+                                             .getProteinSequence();
+        System.out.println(proteinSequence.substring(0, 100));
 
-		assertEquals(78407602, location	.getPosition()
-										.getStart());
-		assertEquals(78428113, location	.getPosition()
-										.getEnd());
-		assertEquals("GRCh37", location.getReferenceAssembly());
-		assertEquals("5", location.getChromosome());
-	}
+    }
 
-	@Test
-	public void testGetProteinSequences() throws Exception
-	{
-		List<String> proteinSequences = EnsemblUtils.getInstance()
-													.findSpecies("human")
-													.get()
-													.findGene("DMGDH")
-													.get()
-													.getProteinSequences();
+    @Test
+    public void testReferenceLocation() throws Exception
+    {
+        GeneLocation location = EnsemblUtils.getInstance()
+                                            .findSpecies("human")
+                                            .get()
+                                            .findGene("BHMT")
+                                            .get()
+                                            .getLocation("GRCh37");
 
-		//		System.out.println(JSONHelper.prettyPrint(proteinSequences));
-		assertEquals(2, proteinSequences.size());
-	}
+        assertEquals(78407602, location.getPosition()
+                                       .getStart());
+        assertEquals(78428113, location.getPosition()
+                                       .getEnd());
+        assertEquals("GRCh37", location.getReferenceAssembly());
+        assertEquals("5", location.getChromosome());
+    }
+
+    @Test
+    public void testGetProteinSequences() throws Exception
+    {
+        List<String> proteinSequences = EnsemblUtils.getInstance()
+                                                    .findSpecies("human")
+                                                    .get()
+                                                    .findGene("DMGDH")
+                                                    .get()
+                                                    .getProteinSequences()
+                                                    .collect(Collectors.toList());
+
+        //		System.out.println(JSONHelper.prettyPrint(proteinSequences));
+        assertEquals(2, proteinSequences.size());
+    }
+
+    @Test
+    public void testVariantDetail() throws Exception
+    {
+        SpeciesAccessor speciesAccessor = EnsemblUtils.getInstance()
+                                                      .getHuman();
+
+        assertEquals(VariantConsequence.MISSENSE, speciesAccessor.findVariantDetail("rs682985")
+                                                                 .getConsequence());
+        assertEquals(VariantConsequence._3_PRIME_UTR, speciesAccessor.findVariantDetail("rs6114998")
+                                                                     .getConsequence());
+
+    }
 
 }

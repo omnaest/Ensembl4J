@@ -22,76 +22,89 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Sequence
 {
-	@JsonProperty("desc")
-	private String description;
+    @JsonProperty("desc")
+    private String description;
 
-	@JsonProperty
-	private String query;
+    @JsonProperty
+    private String query;
 
-	@JsonProperty
-	private String id;
+    @JsonProperty
+    private String id;
 
-	@JsonProperty("seq")
-	private String sequence;
+    @JsonProperty("seq")
+    private String sequence;
 
-	@JsonProperty
-	private String molecule;
+    @JsonProperty
+    private String molecule;
 
-	public String getDescription()
-	{
-		return this.description;
-	}
+    @JsonProperty
+    private int version;
 
-	public void setDescription(String description)
-	{
-		this.description = description;
-	}
+    public int getVersion()
+    {
+        return this.version;
+    }
 
-	public String getQuery()
-	{
-		return this.query;
-	}
+    public void setVersion(int version)
+    {
+        this.version = version;
+    }
 
-	public void setQuery(String query)
-	{
-		this.query = query;
-	}
+    public String getDescription()
+    {
+        return this.description;
+    }
 
-	public String getId()
-	{
-		return this.id;
-	}
+    public void setDescription(String description)
+    {
+        this.description = description;
+    }
 
-	public void setId(String id)
-	{
-		this.id = id;
-	}
+    public String getQuery()
+    {
+        return this.query;
+    }
 
-	public String getSequence()
-	{
-		return this.sequence;
-	}
+    public void setQuery(String query)
+    {
+        this.query = query;
+    }
 
-	public void setSequence(String sequence)
-	{
-		this.sequence = sequence;
-	}
+    public String getId()
+    {
+        return this.id;
+    }
 
-	public String getMolecule()
-	{
-		return this.molecule;
-	}
+    public void setId(String id)
+    {
+        this.id = id;
+    }
 
-	public void setMolecule(String molecule)
-	{
-		this.molecule = molecule;
-	}
+    public String getSequence()
+    {
+        return this.sequence;
+    }
 
-	@Override
-	public String toString()
-	{
-		return "Sequence [descr=" + this.description + ", query=" + this.query + ", id=" + this.id + ", sequence=" + this.sequence + ", molecule="
-				+ this.molecule + "]";
-	}
+    public void setSequence(String sequence)
+    {
+        this.sequence = sequence;
+    }
+
+    public String getMolecule()
+    {
+        return this.molecule;
+    }
+
+    public void setMolecule(String molecule)
+    {
+        this.molecule = molecule;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "Sequence [descr=" + this.description + ", query=" + this.query + ", id=" + this.id + ", sequence=" + this.sequence + ", molecule="
+                + this.molecule + "]";
+    }
 
 }

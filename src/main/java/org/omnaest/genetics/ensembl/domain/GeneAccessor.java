@@ -28,22 +28,26 @@ import java.util.stream.Stream;
  */
 public interface GeneAccessor
 {
-	public String getName();
+    public String getName();
 
-	public String getDescription();
+    public String getDescription();
 
-	public String getDNASequence();
+    public String getDNASequence();
 
-	public GeneLocation getLocation();
+    public GeneLocation getLocation();
 
-	public GeneLocation getLocation(String referenceAssembly);
+    public GeneLocation getLocation(String referenceAssembly);
 
-	public List<Variant> getVariants();
+    public List<Variant> getVariants();
 
-	public List<Exon> getExons();
+    public List<Exon> getExons();
 
-	public List<String> getProteinSequences();
+    public Stream<String> getProteinSequences();
 
-	public Stream<ProteinTranscriptAccessor> getProteinTranscripts();
+    public Stream<ProteinTranscriptAccessor> getProteinTranscripts();
+
+    public String getUniprotId();
+
+    Stream<String> getcDNASequences();
 
 }
