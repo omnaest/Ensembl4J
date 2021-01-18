@@ -16,7 +16,7 @@
 
 
 */
-package org.omnaest.genetics.ensembl;
+package org.omnaest.genetics.ensembl.rest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -37,6 +37,7 @@ import org.omnaest.genetics.ensembl.domain.raw.VariantInfo;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRef;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
+import org.omnaest.genetics.ensembl.rest.EnsemblRESTUtils;
 import org.omnaest.utils.JSONHelper;
 import org.omnaest.utils.rest.client.RestClient;
 

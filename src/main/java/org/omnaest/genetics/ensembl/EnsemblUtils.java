@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.omnaest.genetics.ensembl.EnsemblRESTUtils.EnsembleRESTAccessor;
+import org.omnaest.genetics.ensembl.domain.ClinicalSignificance;
 import org.omnaest.genetics.ensembl.domain.Exon;
 import org.omnaest.genetics.ensembl.domain.GeneAccessor;
 import org.omnaest.genetics.ensembl.domain.GeneLocation;
@@ -43,9 +43,9 @@ import org.omnaest.genetics.ensembl.domain.ProteinTranscriptAccessor;
 import org.omnaest.genetics.ensembl.domain.Range;
 import org.omnaest.genetics.ensembl.domain.SpeciesAccessor;
 import org.omnaest.genetics.ensembl.domain.Variant;
+import org.omnaest.genetics.ensembl.domain.VariantConsequence;
 import org.omnaest.genetics.ensembl.domain.VariantDetail;
 import org.omnaest.genetics.ensembl.domain.raw.BioType;
-import org.omnaest.genetics.ensembl.domain.raw.ExonRegion;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
 import org.omnaest.genetics.ensembl.domain.raw.ExternalXRef;
 import org.omnaest.genetics.ensembl.domain.raw.ExternalXRefs;
@@ -57,8 +57,12 @@ import org.omnaest.genetics.ensembl.domain.raw.Species;
 import org.omnaest.genetics.ensembl.domain.raw.SpeciesList;
 import org.omnaest.genetics.ensembl.domain.raw.Transcript;
 import org.omnaest.genetics.ensembl.domain.raw.Transcripts;
+import org.omnaest.genetics.ensembl.domain.raw.VariantInfo;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
+import org.omnaest.genetics.ensembl.internal.VariantInfoIndex;
+import org.omnaest.genetics.ensembl.rest.EnsemblRESTUtils;
+import org.omnaest.genetics.ensembl.rest.EnsemblRESTUtils.EnsembleRESTAccessor;
 import org.omnaest.utils.CollectorUtils;
 import org.omnaest.utils.ExceptionUtils;
 import org.omnaest.utils.ExceptionUtils.RuntimeExceptionHandler;
@@ -68,8 +72,9 @@ import org.omnaest.utils.MatcherUtils.Match;
 import org.omnaest.utils.ObjectUtils;
 import org.omnaest.utils.PredicateUtils;
 import org.omnaest.utils.cache.Cache;
-import org.omnaest.utils.cache.JsonFolderFilesCache;
+import org.omnaest.utils.cache.internal.JsonFolderFilesCache;
 import org.omnaest.utils.element.cached.CachedElement;
+import org.omnaest.utils.repository.MapElementRepository;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
 import org.omnaest.utils.rest.client.RestHelper.RESTAccessExeption;
 import org.slf4j.Logger;
@@ -81,9 +86,9 @@ import org.slf4j.LoggerFactory;
  */
 public class EnsemblUtils
 {
-    private static final Logger          LOG                   = LoggerFactory.getLogger(EnsemblUtils.class);
+    static final Logger                  LOG                   = LoggerFactory.getLogger(EnsemblUtils.class);
     private static File                  localDefaultCacheFile = new File("cache/ensembl");
-    private static Function<File, Cache> cacheFactory          = (file) -> new JsonFolderFilesCache(file);
+    private static Function<File, Cache> cacheFactory          = (file) -> new JsonFolderFilesCache(file).withNativeByteArrayStorage(true);
     private static Supplier<Cache>       cacheSupplier         = CachedElement.of(() -> cacheFactory.apply(localDefaultCacheFile));
 
     public static interface EnsemblDataSetAccessor
@@ -105,6 +110,10 @@ public class EnsemblUtils
 
         EnsemblDataSetAccessor withProxy(Proxy proxy);
 
+        EnsemblDataSetAccessor usingFTPLargeVariationFileIndexSupport();
+
+        EnsemblDataSetAccessor usingFTPLargeVariationFileIndexSupportWithRepositoryProvider(Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider);
+
     }
 
     public static interface CacheManager
@@ -122,7 +131,8 @@ public class EnsemblUtils
     {
         return new EnsemblDataSetAccessor()
         {
-            private EnsembleRESTAccessor restAccessor = EnsemblRESTUtils.getInstance();
+            private EnsembleRESTAccessor restAccessor     = EnsemblRESTUtils.getInstance();
+            private VariantInfoIndex     variantInfoIndex = VariantInfoIndex.getInstance();
 
             @Override
             public EnsemblDataSetAccessor withProxy(Proxy proxy)
@@ -141,7 +151,23 @@ public class EnsemblUtils
             @Override
             public EnsemblDataSetAccessor usingLocalCache()
             {
+                this.variantInfoIndex.usingLocalCache();
                 return this.usingCache(cacheSupplier.get());
+            }
+
+            @Override
+            public EnsemblDataSetAccessor usingFTPLargeVariationFileIndexSupport()
+            {
+                this.variantInfoIndex.enable();
+                return this;
+            }
+
+            @Override
+            public EnsemblDataSetAccessor usingFTPLargeVariationFileIndexSupportWithRepositoryProvider(Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider)
+            {
+                this.variantInfoIndex.withRepositoryProvider(repositoryProvider)
+                                     .enable();
+                return this;
             }
 
             @Override
@@ -424,7 +450,6 @@ public class EnsemblUtils
                                     @Override
                                     public List<String> getVariantSequences()
                                     {
-                                        // TODO Auto-generated method stub
                                         throw new UnsupportedOperationException();
                                     }
                                 };
@@ -432,12 +457,6 @@ public class EnsemblUtils
 
                         };
 
-                    }
-
-                    private Map<String, ExonRegion> determineExonRegions()
-                    {
-                        // TODO Auto-generated method stub
-                        return null;
                     }
 
                     private Map<String, String> determineExonSequences(ExonRegions exonRegions)
@@ -479,14 +498,24 @@ public class EnsemblUtils
                     @Override
                     public VariantDetail findVariantDetail(String variantId)
                     {
-                        org.omnaest.genetics.ensembl.domain.raw.VariantInfo rawVariantDetail = restAccessor.getVariantDetails(rawSpecies.getName(), variantId);
+                        CachedElement<VariantInfo> rawRESTVariantDetail = CachedElement.of(() -> restAccessor.getVariantDetails(rawSpecies.getName(),
+                                                                                                                                variantId));
+                        CachedElement<Optional<VariantInfo>> rawFtpVariantDetail = CachedElement.of(() -> variantInfoIndex.getVariantInfo(rawSpecies.getName(),
+                                                                                                                                          variantId));
 
                         return new VariantDetail()
                         {
+                            private <E> E getVariantInfo(Function<VariantInfo, E> methodReference)
+                            {
+                                return rawFtpVariantDetail.get()
+                                                          .map(methodReference)
+                                                          .orElseGet(() -> ObjectUtils.getIfNotNull(rawRESTVariantDetail.get(), methodReference));
+                            }
+
                             @Override
                             public List<String> getSynonyms()
                             {
-                                return rawVariantDetail.getSynonyms();
+                                return this.getVariantInfo(VariantInfo::getSynonyms);
                             }
 
                             @Override
@@ -517,7 +546,7 @@ public class EnsemblUtils
                             @Override
                             public Set<ClinicalSignificance> getClinicalSignificances()
                             {
-                                List<String> clinicalSignifance = ObjectUtils.getIfNotNull(rawVariantDetail, () -> rawVariantDetail.getClinicalSignifance());
+                                Set<String> clinicalSignifance = this.getVariantInfo(VariantInfo::getClinicalSignifance);
                                 return ObjectUtils.getOrDefaultIfNotNull(clinicalSignifance, () -> clinicalSignifance.stream()
                                                                                                                      .map(significance -> Arrays.asList(ClinicalSignificance.values())
                                                                                                                                                 .stream()
@@ -531,7 +560,7 @@ public class EnsemblUtils
                             @Override
                             public VariantConsequence getConsequence()
                             {
-                                String currentConsequence = ObjectUtils.getIfNotNull(rawVariantDetail, () -> rawVariantDetail.getConsequence());
+                                String currentConsequence = this.getVariantInfo(VariantInfo::getConsequence);
                                 return Arrays.asList(VariantConsequence.values())
                                              .stream()
                                              .filter(consequence -> consequence.matches(currentConsequence))
@@ -542,19 +571,18 @@ public class EnsemblUtils
                             @Override
                             public SortedSet<String> getTraits()
                             {
-                                return ObjectUtils.getOrDefaultIfNotNull(rawVariantDetail, () -> rawVariantDetail.getPhenotypes()
-                                                                                                                 .stream()
-                                                                                                                 .map(pt -> pt.getTrait())
-                                                                                                                 .filter(PredicateUtils.notBlank())
-                                                                                                                 .collect(CollectorUtils.toSortedSet(new TreeSet<>())),
-                                                                         () -> new TreeSet<>());
+                                return Optional.ofNullable(this.getVariantInfo(VariantInfo::getPhenotypes))
+                                               .orElse(Collections.emptyList())
+                                               .stream()
+                                               .map(pt -> pt.getTrait())
+                                               .filter(PredicateUtils.notBlank())
+                                               .collect(CollectorUtils.toSortedSet(new TreeSet<>()));
                             }
 
                             @Override
                             public double getMinorAlleleFrequency()
                             {
-                                String maf = ObjectUtils.getIfNotNull(rawVariantDetail, () -> rawVariantDetail.getMaf());
-                                return NumberUtils.toDouble(maf);
+                                return NumberUtils.toDouble(this.getVariantInfo(VariantInfo::getMaf));
                             }
 
                         };

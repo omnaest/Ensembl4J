@@ -29,7 +29,7 @@ import org.omnaest.genetics.ensembl.domain.Exon;
 import org.omnaest.genetics.ensembl.domain.GeneLocation;
 import org.omnaest.genetics.ensembl.domain.SpeciesAccessor;
 import org.omnaest.genetics.ensembl.domain.Variant;
-import org.omnaest.genetics.ensembl.domain.VariantDetail.VariantConsequence;
+import org.omnaest.genetics.ensembl.domain.VariantConsequence;
 import org.omnaest.utils.JSONHelper;
 
 public class EnsemblUtilsTest
@@ -144,9 +144,9 @@ public class EnsemblUtilsTest
                                             .get()
                                             .getLocation("GRCh37");
 
-        assertEquals(78407602, location.getPosition()
+        assertEquals(78407632, location.getPosition()
                                        .getStart());
-        assertEquals(78428113, location.getPosition()
+        assertEquals(78428111, location.getPosition()
                                        .getEnd());
         assertEquals("GRCh37", location.getReferenceAssembly());
         assertEquals("5", location.getChromosome());
@@ -171,6 +171,22 @@ public class EnsemblUtilsTest
     public void testVariantDetail() throws Exception
     {
         SpeciesAccessor speciesAccessor = EnsemblUtils.getInstance()
+                                                      .getHuman();
+
+        assertEquals(VariantConsequence.MISSENSE, speciesAccessor.findVariantDetail("rs682985")
+                                                                 .getConsequence());
+        assertEquals(VariantConsequence._3_PRIME_UTR, speciesAccessor.findVariantDetail("rs6114998")
+                                                                     .getConsequence());
+
+    }
+
+    @Test
+    @Ignore
+    public void testVariantDetailUsingFTP() throws Exception
+    {
+        SpeciesAccessor speciesAccessor = EnsemblUtils.getInstance()
+                                                      .usingFTPLargeVariationFileIndexSupport()
+                                                      .usingLocalCache()
                                                       .getHuman();
 
         assertEquals(VariantConsequence.MISSENSE, speciesAccessor.findVariantDetail("rs682985")

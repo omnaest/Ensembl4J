@@ -1,12 +1,18 @@
 package org.omnaest.genetics.ensembl.domain.raw;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(Include.NON_EMPTY)
 public class VariantInfo
 {
     @JsonProperty
@@ -37,7 +43,7 @@ public class VariantInfo
     private String consequence;
 
     @JsonProperty("clinical_significance")
-    private List<String> clinicalSignifance = new ArrayList<>();
+    private Set<String> clinicalSignifance = new HashSet<>();
 
     @JsonProperty
     private List<VariantMapping> mappings = new ArrayList<>();
@@ -48,12 +54,12 @@ public class VariantInfo
     @JsonProperty
     private List<Phenotype> phenotypes = new ArrayList<>();
 
-    public List<String> getClinicalSignifance()
+    public Set<String> getClinicalSignifance()
     {
         return this.clinicalSignifance;
     }
 
-    public void setClinicalSignifance(List<String> clinicalSignifance)
+    public void setClinicalSignifance(Set<String> clinicalSignifance)
     {
         this.clinicalSignifance = clinicalSignifance;
     }
@@ -190,6 +196,13 @@ public class VariantInfo
                 + this.variantClass + ", synonyms=" + this.synonyms + ", ancestralAllele=" + this.ancestralAllele + ", minorAllele=" + this.minorAllele
                 + ", consequence=" + this.consequence + ", clinicalSignifance=" + this.clinicalSignifance + ", mappings=" + this.mappings + ", evidence="
                 + this.evidence + ", phenotypes=" + this.phenotypes + "]";
+    }
+
+    @JsonIgnore
+    public VariantInfo addClinicalSignifance(String clinicalSignificance)
+    {
+        this.clinicalSignifance.add(clinicalSignificance);
+        return this;
     }
 
 }

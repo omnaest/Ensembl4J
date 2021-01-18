@@ -16,10 +16,11 @@
 
 
 */
-package org.omnaest.genetics.ensembl;
+package org.omnaest.genetics.ensembl.rest;
 
 import java.util.concurrent.TimeUnit;
 
+import org.omnaest.genetics.ensembl.EnsemblUtils;
 import org.omnaest.genetics.ensembl.domain.raw.ExonRegions;
 import org.omnaest.genetics.ensembl.domain.raw.ExternalXRefs;
 import org.omnaest.genetics.ensembl.domain.raw.Lookup;
@@ -32,9 +33,9 @@ import org.omnaest.genetics.ensembl.domain.raw.VariantInfo;
 import org.omnaest.genetics.ensembl.domain.raw.Variations;
 import org.omnaest.genetics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.cache.Cache;
-import org.omnaest.utils.rest.client.JSONRestClient;
 import org.omnaest.utils.rest.client.RestClient;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
+import org.omnaest.utils.rest.client.internal.JSONRestClient;
 
 /**
  * Raw request utils for the Ensembl REST API. <br>
