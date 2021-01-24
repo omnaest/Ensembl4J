@@ -97,7 +97,8 @@ public class VariantInfoIndex
             };
 
             MapElementRepository<String, VariantInfo> variantIdToVariantInfo = this.repositoryProvider.apply(species);
-            Counter counter = Counter.fromZero();
+            Counter includedVariantsCounter = Counter.fromZero();
+            Counter processedVariantsCounter = Counter.fromZero();
             try (Stream<VCFRecord> records = Stream.concat(EnsemblFTPUtils.load()
                                                                           .withCache(this.cache)
                                                                           .variationVCFFiles()
@@ -116,11 +117,15 @@ public class VariantInfoIndex
                                                                           .asParsedVCF()
                                                                           .getRecords()))
             {
-                StreamUtils.framedAsList(1000, records.filter(this.variantFilter)
-                                                      .peek(record -> counter.increment()
-                                                                             .ifModulo(100000,
-                                                                                       count -> LOG.info("Current number of variation index records: "
-                                                                                               + count))))
+                StreamUtils.framedAsList(1000, records.peek(record -> processedVariantsCounter.increment()
+                                                                                              .ifModulo(100000,
+                                                                                                        count -> LOG.info("    Processed variation index records: "
+                                                                                                                + count)))
+                                                      .filter(this.variantFilter)
+                                                      .peek(record -> includedVariantsCounter.increment()
+                                                                                             .ifModulo(100000,
+                                                                                                       count -> LOG.info("Current number of included variation index records: "
+                                                                                                               + count))))
                            .forEach(recordsBatch ->
                            {
                                Map<String, VariantInfo> existingVariantIdToVariantInfo = variantIdToVariantInfo.getAll(recordsBatch.stream()
