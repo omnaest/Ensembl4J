@@ -5,16 +5,20 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.omnaest.genetics.domain.VCFRecord;
-import org.omnaest.genetics.domain.VCFRecord.AdditionalInfo;
 import org.omnaest.genetics.ensembl.domain.ClinicalSignificance;
 import org.omnaest.genetics.ensembl.domain.VariantConsequence;
 import org.omnaest.genetics.ensembl.domain.raw.VariantInfo;
 import org.omnaest.genetics.ensembl.ftp.EnsemblFTPUtils;
+import org.omnaest.genetics.vcf.domain.VCFRecord;
+import org.omnaest.genetics.vcf.domain.VCFRecord.AdditionalInfo;
 import org.omnaest.utils.CacheUtils;
 import org.omnaest.utils.ComparatorUtils;
+import org.omnaest.utils.PredicateUtils;
+import org.omnaest.utils.StreamUtils;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.counter.Counter;
 import org.omnaest.utils.optional.NullOptional;
@@ -31,6 +35,7 @@ public class VariantInfoIndex
     private Map<String, Index>                                          speciesToIndexData = new ConcurrentHashMap<String, Index>();
     private Function<String, Index>                                     indexDataProvider  = species -> new Index();
     private Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider = species -> ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
+    private Predicate<VCFRecord>                                        variantFilter      = PredicateUtils.allMatching();
 
     public VariantInfoIndex usingCache(Cache cache)
     {
@@ -111,11 +116,21 @@ public class VariantInfoIndex
                                                                           .asParsedVCF()
                                                                           .getRecords()))
             {
-                records.peek(record -> counter.increment()
-                                              .ifModulo(100000, count -> LOG.info("Current number of variation index records: " + count)))
-                       .forEach(record -> variationVcfRecordAndVariantInfoMerger.accept(record,
-                                                                                        variantIdToVariantInfo.computeIfAbsent(record.getId(),
-                                                                                                                               id -> new VariantInfo())));
+                StreamUtils.framedAsList(1000, records.filter(this.variantFilter)
+                                                      .peek(record -> counter.increment()
+                                                                             .ifModulo(100000,
+                                                                                       count -> LOG.info("Current number of variation index records: "
+                                                                                               + count))))
+                           .forEach(recordsBatch ->
+                           {
+                               Map<String, VariantInfo> existingVariantIdToVariantInfo = variantIdToVariantInfo.getAll(recordsBatch.stream()
+                                                                                                                                   .map(record -> record.getId())
+                                                                                                                                   .collect(Collectors.toList()));
+                               recordsBatch.forEach(record -> variationVcfRecordAndVariantInfoMerger.accept(record,
+                                                                                                            existingVariantIdToVariantInfo.computeIfAbsent(record.getId(),
+                                                                                                                                                           id -> new VariantInfo())));
+                               variantIdToVariantInfo.putAll(existingVariantIdToVariantInfo);
+                           });
             }
             return new Index(variantIdToVariantInfo);
         };
@@ -149,5 +164,11 @@ public class VariantInfoIndex
                        .orElse(new Index())
                        .get(variantId)
                        .asOptional();
+    }
+
+    public VariantInfoIndex withVariantIdFilter(Predicate<String> variantIdFilter)
+    {
+        this.variantFilter = record -> variantIdFilter.test(record.getId());
+        return this;
     }
 }

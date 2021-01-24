@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -114,6 +115,8 @@ public class EnsemblUtils
 
         EnsemblDataSetAccessor usingFTPLargeVariationFileIndexSupportWithRepositoryProvider(Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider);
 
+        EnsemblDataSetAccessor withVariantIdFilter(Predicate<String> variantFilter);
+
     }
 
     public static interface CacheManager
@@ -167,6 +170,13 @@ public class EnsemblUtils
             {
                 this.variantInfoIndex.withRepositoryProvider(repositoryProvider)
                                      .enable();
+                return this;
+            }
+
+            @Override
+            public EnsemblDataSetAccessor withVariantIdFilter(Predicate<String> variantIdFilter)
+            {
+                this.variantInfoIndex.withVariantIdFilter(variantIdFilter);
                 return this;
             }
 
@@ -590,6 +600,7 @@ public class EnsemblUtils
 
                 };
             }
+
         };
     }
 

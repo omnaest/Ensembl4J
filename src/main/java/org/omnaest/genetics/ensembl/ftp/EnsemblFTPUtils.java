@@ -6,8 +6,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import org.omnaest.genetics.VCFUtils;
-import org.omnaest.genetics.domain.VCFRecord;
+import org.omnaest.genetics.vcf.VCFUtils;
+import org.omnaest.genetics.vcf.domain.VCFRecord;
 import org.omnaest.utils.CacheUtils;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.element.cached.CachedElement;
