@@ -105,7 +105,6 @@ public class VariantInfoIndex
                                                                           .current()
                                                                           .forSpecies(species)
                                                                           .forChromosomes()
-                                                                          //                                             .limit(3) // FIXME
                                                                           .flatMap(resource -> resource.asParsedVCF()
                                                                                                        .getRecords()),
                                                            EnsemblFTPUtils.load()
@@ -117,15 +116,16 @@ public class VariantInfoIndex
                                                                           .asParsedVCF()
                                                                           .getRecords()))
             {
-                StreamUtils.framedAsList(1000, records.peek(record -> processedVariantsCounter.increment()
-                                                                                              .ifModulo(100000,
-                                                                                                        count -> LOG.info("    Processed variation index records: "
-                                                                                                                + count)))
-                                                      .filter(this.variantFilter)
-                                                      .peek(record -> includedVariantsCounter.increment()
-                                                                                             .ifModulo(100000,
-                                                                                                       count -> LOG.info("Current number of included variation index records: "
-                                                                                                               + count))))
+                LOG.info("Start reading raw variant vcf files...");
+                StreamUtils.framedNonNullAsList(1000, records.peek(record -> processedVariantsCounter.increment()
+                                                                                                     .ifModulo(100000,
+                                                                                                               count -> LOG.info("    Processed variation index records: "
+                                                                                                                       + count)))
+                                                             .filter(this.variantFilter)
+                                                             .peek(record -> includedVariantsCounter.increment()
+                                                                                                    .ifModulo(100000,
+                                                                                                              count -> LOG.info("Current number of included variation index records: "
+                                                                                                                      + count))))
                            .forEach(recordsBatch ->
                            {
                                Map<String, VariantInfo> existingVariantIdToVariantInfo = variantIdToVariantInfo.getAll(recordsBatch.stream()
@@ -136,6 +136,12 @@ public class VariantInfoIndex
                                                                                                                                                            id -> new VariantInfo())));
                                variantIdToVariantInfo.putAll(existingVariantIdToVariantInfo);
                            });
+                LOG.info("...finished reading raw variant vcf files");
+            }
+            catch (Exception e)
+            {
+                LOG.error("Unexpected error during indexing of variants", e);
+                throw e;
             }
             return new Index(variantIdToVariantInfo);
         };
