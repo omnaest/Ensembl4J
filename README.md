@@ -28,7 +28,7 @@ REST and FTP utils for the ENSEMBL REST API at http://rest.ensembl.org/
 
     EnsemblFTPUtils
 
-## Maven Snapshots
+# Maven Snapshots
 
     <dependency>
       <groupId>org.omnaest.genomics</groupId>
