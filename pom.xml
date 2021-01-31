@@ -47,7 +47,7 @@
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>org.omnaest.genetics</groupId>
+			<groupId>org.omnaest.genomics</groupId>
 			<artifactId>VCF4J</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
