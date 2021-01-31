@@ -9,12 +9,12 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.omnaest.genetics.vcf.domain.VCFRecord;
-import org.omnaest.genetics.vcf.domain.VCFRecord.AdditionalInfo;
 import org.omnaest.genomics.ensembl.domain.ClinicalSignificance;
 import org.omnaest.genomics.ensembl.domain.VariantConsequence;
 import org.omnaest.genomics.ensembl.domain.raw.VariantInfo;
 import org.omnaest.genomics.ensembl.ftp.EnsemblFTPUtils;
+import org.omnaest.genomics.vcf.domain.VCFRecord;
+import org.omnaest.genomics.vcf.domain.VCFRecord.AdditionalInfo;
 import org.omnaest.utils.CacheUtils;
 import org.omnaest.utils.ComparatorUtils;
 import org.omnaest.utils.PredicateUtils;
