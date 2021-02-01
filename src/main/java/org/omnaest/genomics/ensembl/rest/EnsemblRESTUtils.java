@@ -35,7 +35,6 @@ import org.omnaest.genomics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.rest.client.RestClient;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
-import org.omnaest.utils.rest.client.internal.JSONRestClient;
 
 /**
  * Raw request utils for the Ensembl REST API. <br>
@@ -214,9 +213,10 @@ public class EnsemblRESTUtils
 
             private RestClient newRestClient()
             {
-                return new JSONRestClient().withProxy(this.proxy)
-                                           .withCache(this.cache)
-                                           .withRetry(10, 6, TimeUnit.SECONDS);
+                return RestClient.newJSONRestClient()
+                                 .withProxy(this.proxy)
+                                 .withCache(this.cache)
+                                 .withRetry(12, 15, TimeUnit.SECONDS);
             }
 
             @Override
