@@ -33,6 +33,14 @@ public class EnsemblFTPUtils
     public static interface EnsembleVariationVCFLoader
     {
         public EnsembleVariationVCFLoaderWithVersion current();
+
+        public EnsembleVariationVCFLoaderWithVersion custom(String version);
+
+        public EnsembleVariationVCFLoaderWithVersion releaseGRCH37(int releaseVersion);
+
+        public EnsembleVariationVCFLoaderWithVersion currentGRCH37();
+
+        public EnsembleVariationVCFLoaderWithVersion release(int releaseVersion);
     }
 
     public static interface EnsembleVariationVCFLoaderWithVersion
@@ -47,6 +55,8 @@ public class EnsemblFTPUtils
         public Stream<VariationChromosomeVCFResource> forChromosomes();
 
         public VariationVCFResource forClinicallyAssociated();
+
+        public VariationVCFResource forPhenotypeAssociated();
     }
 
     public static interface VariationVCFResource
@@ -97,6 +107,30 @@ public class EnsemblFTPUtils
                     @Override
                     public EnsembleVariationVCFLoaderWithVersion current()
                     {
+                        return this.custom("current_variation");
+                    }
+
+                    @Override
+                    public EnsembleVariationVCFLoaderWithVersion release(int releaseVersion)
+                    {
+                        return this.custom("release-" + releaseVersion + "/variation");
+                    }
+
+                    @Override
+                    public EnsembleVariationVCFLoaderWithVersion currentGRCH37()
+                    {
+                        return this.custom("grch37/current/variation");
+                    }
+
+                    @Override
+                    public EnsembleVariationVCFLoaderWithVersion releaseGRCH37(int releaseVersion)
+                    {
+                        return this.custom("grch37/release-" + releaseVersion + "/variation");
+                    }
+
+                    @Override
+                    public EnsembleVariationVCFLoaderWithVersion custom(String version)
+                    {
                         return new EnsembleVariationVCFLoaderWithVersion()
                         {
 
@@ -114,8 +148,19 @@ public class EnsemblFTPUtils
                                     @Override
                                     public VariationVCFResource forClinicallyAssociated()
                                     {
-                                        String fileName = "/pub/current_variation/vcf/" + species + "/" + species + "_clinically_associated.vcf.gz";
-                                        byte[] data = this.loadFileFromFtp(fileName);
+                                        String fileName = "/pub/" + version + "/vcf/" + species + "/" + species + "_clinically_associated.vcf.gz";
+                                        return this.createVariationVCFResource(fileName, this.loadFileFromFtp(fileName));
+                                    }
+
+                                    @Override
+                                    public VariationVCFResource forPhenotypeAssociated()
+                                    {
+                                        String fileName = "/pub/" + version + "/vcf/" + species + "/" + species + "_phenotype_associated.vcf.gz";
+                                        return this.createVariationVCFResource(fileName, this.loadFileFromFtp(fileName));
+                                    }
+
+                                    private VariationVCFResource createVariationVCFResource(String fileName, byte[] data)
+                                    {
                                         return new VariationVCFResource()
                                         {
                                             @Override

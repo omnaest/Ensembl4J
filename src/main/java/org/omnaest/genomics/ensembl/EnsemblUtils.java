@@ -519,6 +519,9 @@ public class EnsemblUtils
                             {
                                 return rawFtpVariantDetail.get()
                                                           .map(methodReference)
+                                                          .filter(value -> value instanceof List ? !((List<?>) value).isEmpty() : true)
+                                                          .filter(value -> value instanceof Set ? !((Set<?>) value).isEmpty() : true)
+                                                          .filter(value -> value instanceof Map ? !((Map<?, ?>) value).isEmpty() : true)
                                                           .orElseGet(() -> ObjectUtils.getIfNotNull(rawRESTVariantDetail.get(), methodReference));
                             }
 
