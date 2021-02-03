@@ -89,90 +89,98 @@ public class VariantInfoIndex
                 LOG.info("...finished counting. Found " + numberOfVariants + " matching variants in " + numberOfAllSourceVariants.getAsLong()
                         + " source variants.");
 
-                UnaryBiFunction<VariantInfo> variantInfoMerger = (info1, info2) ->
+                long currentVariantIndexSize = variantIdToVariantInfo.size();
+                if (currentVariantIndexSize < numberOfVariants)
                 {
-                    VariantInfo variantInfo = new VariantInfo();
+                    LOG.info("Rebuilding index as current index has only " + currentVariantIndexSize + " variants, but " + numberOfVariants + " are needed.");
 
-                    variantInfo.setMaf(Optional.ofNullable(info1.getMaf())
-                                               .orElse(info2.getMaf()));
-                    variantInfo.setConsequence(Stream.of(info1.getConsequence(), info2.getConsequence())
-                                                     .filter(PredicateUtils.notBlank())
-                                                     .map(VariantConsequence::of)
-                                                     .filter(Optional::isPresent)
-                                                     .map(Optional::get)
-                                                     .sorted(ComparatorUtils.comparatorFunction(VariantConsequence::getSeverity))
-                                                     .findFirst()
-                                                     .map(VariantConsequence::getMatchStr)
-                                                     .orElse(null));
-
-                    Stream.concat(Optional.ofNullable(info1.getClinicalSignifance())
-                                          .orElse(Collections.emptySet())
-                                          .stream(),
-                                  Optional.ofNullable(info2.getClinicalSignifance())
-                                          .orElse(Collections.emptySet())
-                                          .stream())
-                          .filter(PredicateUtils.notNull())
-                          .forEach(variantInfo::addClinicalSignifance);
-
-                    return variantInfo;
-                };
-
-                Function<VCFRecord, VariantInfo> variationVcfRecordToVariantInfoMapper = record ->
-                {
-                    VariantInfo variantInfo = new VariantInfo();
-
-                    variantInfo.setMaf(record.getInfoValue(AdditionalInfo.MAF)
-                                             .orElse(variantInfo.getMaf()));
-                    variantInfo.setConsequence(record.getInfoTokenGroups(AdditionalInfo.CSQ)
-                                                     .map(group -> group.getValueAt(1))
-                                                     .filter(Optional::isPresent)
-                                                     .map(Optional::get)
-                                                     .map(VariantConsequence::of)
-                                                     .filter(Optional::isPresent)
-                                                     .map(Optional::get)
-                                                     .sorted(ComparatorUtils.comparatorFunction(VariantConsequence::getSeverity))
-                                                     .findFirst()
-                                                     .map(VariantConsequence::getMatchStr)
-                                                     .orElse(variantInfo.getConsequence()));
-
-                    if (record.getInfoExists(AdditionalInfo.CLIN_risk_factor))
+                    UnaryBiFunction<VariantInfo> variantInfoMerger = (info1, info2) ->
                     {
-                        variantInfo.addClinicalSignifance(ClinicalSignificance.RISK_FACTOR.getMatchStr());
-                    }
-                    if (record.getInfoExists(AdditionalInfo.CLIN_benign))
+                        VariantInfo variantInfo = new VariantInfo();
+
+                        variantInfo.setMaf(Optional.ofNullable(info1.getMaf())
+                                                   .orElse(info2.getMaf()));
+                        variantInfo.setConsequence(Stream.of(info1.getConsequence(), info2.getConsequence())
+                                                         .filter(PredicateUtils.notBlank())
+                                                         .map(VariantConsequence::of)
+                                                         .filter(Optional::isPresent)
+                                                         .map(Optional::get)
+                                                         .sorted(ComparatorUtils.comparatorFunction(VariantConsequence::getSeverity))
+                                                         .findFirst()
+                                                         .map(VariantConsequence::getMatchStr)
+                                                         .orElse(null));
+
+                        Stream.concat(Optional.ofNullable(info1.getClinicalSignifance())
+                                              .orElse(Collections.emptySet())
+                                              .stream(),
+                                      Optional.ofNullable(info2.getClinicalSignifance())
+                                              .orElse(Collections.emptySet())
+                                              .stream())
+                              .filter(PredicateUtils.notNull())
+                              .forEach(variantInfo::addClinicalSignifance);
+
+                        return variantInfo;
+                    };
+
+                    Function<VCFRecord, VariantInfo> variationVcfRecordToVariantInfoMapper = record ->
                     {
-                        variantInfo.addClinicalSignifance(ClinicalSignificance.BENIGN.getMatchStr());
-                    }
+                        VariantInfo variantInfo = new VariantInfo();
 
-                    return variantInfo;
-                };
+                        variantInfo.setMaf(record.getInfoValue(AdditionalInfo.MAF)
+                                                 .orElse(variantInfo.getMaf()));
+                        variantInfo.setConsequence(record.getInfoTokenGroups(AdditionalInfo.CSQ)
+                                                         .map(group -> group.getValueAt(1))
+                                                         .filter(Optional::isPresent)
+                                                         .map(Optional::get)
+                                                         .map(VariantConsequence::of)
+                                                         .filter(Optional::isPresent)
+                                                         .map(Optional::get)
+                                                         .sorted(ComparatorUtils.comparatorFunction(VariantConsequence::getSeverity))
+                                                         .findFirst()
+                                                         .map(VariantConsequence::getMatchStr)
+                                                         .orElse(variantInfo.getConsequence()));
 
-                DurationProgressCounter processedVariantsDurationCounter = Counter.fromZero()
-                                                                                  .asDurationProgressCounter()
-                                                                                  .withMaximum(numberOfVariants);
-                LOG.info("Start reading raw variant vcf files...");
-                ProcessorUtils.newRepeatingFilteredProcessorWithInMemoryCacheAndRepository(variantIdToVariantInfo, VariantInfo.class)
-                              .withDistributionFactor(100000, numberOfVariants)
-                              .process((cacheId, distributionFactor) -> this.createVariantsStream(species)
-                                                                            .peek(StreamUtils.peekProgressCounter(100000, numberOfAllSourceVariants.getAsLong(),
-                                                                                                                  progress -> LOG.info("    Processed variation index records: "
-                                                                                                                          + progress.getCounter() + " "
-                                                                                                                          + progress.getProgressAsString()
-                                                                                                                          + " ( Cycle " + (cacheId + 1) + "/"
-                                                                                                                          + distributionFactor + " )")))
-                                                                            .filter(this.variantFilter))
-                              .withAggregatingOperation(VCFRecord::getId, variationVcfRecordToVariantInfoMapper, variantInfoMerger)
-                              .forEach(result -> processedVariantsDurationCounter.increment()
-                                                                                 .ifModulo(10000,
-                                                                                           (DurationProgress progress) -> LOG.info("Current number of processed records: "
-                                                                                                   + progress.getCounter() + " " + progress
-                                                                                                                                           .getProgressAsString()
-                                                                                                   + " ( " + progress.getETA()
-                                                                                                                     .map(DisplayableDuration::asCanonicalString)
-                                                                                                                     .orElse("")
-                                                                                                   + " )")));
-                LOG.info("...finished reading raw variant vcf files");
-                LOG.info("Cached " + variantIdToVariantInfo.size() + " records");
+                        if (record.getInfoExists(AdditionalInfo.CLIN_risk_factor))
+                        {
+                            variantInfo.addClinicalSignifance(ClinicalSignificance.RISK_FACTOR.getMatchStr());
+                        }
+                        if (record.getInfoExists(AdditionalInfo.CLIN_benign))
+                        {
+                            variantInfo.addClinicalSignifance(ClinicalSignificance.BENIGN.getMatchStr());
+                        }
+
+                        return variantInfo;
+                    };
+
+                    DurationProgressCounter processedVariantsDurationCounter = Counter.fromZero()
+                                                                                      .asDurationProgressCounter()
+                                                                                      .withMaximum(numberOfVariants);
+                    LOG.info("Start reading raw variant vcf files...");
+                    ProcessorUtils.newRepeatingFilteredProcessorWithInMemoryCacheAndRepository(variantIdToVariantInfo, VariantInfo.class)
+                                  .withDistributionFactor(100000, numberOfVariants)
+                                  .process((cacheId, distributionFactor) -> this.createVariantsStream(species)
+                                                                                .peek(StreamUtils.peekProgressCounter(100000,
+                                                                                                                      numberOfAllSourceVariants.getAsLong(),
+                                                                                                                      progress -> LOG.info("    Processed variation index records: "
+                                                                                                                              + progress.getCounter() + " "
+                                                                                                                              + progress.getProgressAsString()
+                                                                                                                              + " ( Cycle " + (cacheId + 1)
+                                                                                                                              + "/" + distributionFactor
+                                                                                                                              + " )")))
+                                                                                .filter(this.variantFilter))
+                                  .withAggregatingOperation(VCFRecord::getId, variationVcfRecordToVariantInfoMapper, variantInfoMerger)
+                                  .forEach(result -> processedVariantsDurationCounter.increment()
+                                                                                     .ifModulo(10000,
+                                                                                               (DurationProgress progress) -> LOG.info("Current number of processed records: "
+                                                                                                       + progress.getCounter() + " "
+                                                                                                       + progress.getProgressAsString() + " ( "
+                                                                                                       + progress.getETA()
+                                                                                                                 .map(DisplayableDuration::asCanonicalString)
+                                                                                                                 .orElse("")
+                                                                                                       + " )")));
+                    LOG.info("...finished reading raw variant vcf files");
+                    LOG.info("Cached " + variantIdToVariantInfo.size() + " records");
+                }
 
                 return new Index(variantIdToVariantInfo);
             }
