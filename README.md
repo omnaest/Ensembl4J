@@ -22,11 +22,19 @@ REST and FTP utils for the ENSEMBL REST API at http://rest.ensembl.org/
 					
 ## REST
 
-    EnsemblRESTUtils
+    Sequences sequence = EnsemblRESTUtils.getInstance()
+                                         .getCodingDNASequence("ENSG00000145692");
 
 ## FTP
 
-    EnsemblFTPUtils
+    EnsemblFTPUtils.load()
+                   .withLocalDirectoryCache()
+                   .variationVCFFiles()
+                   .current()
+                   .forSpecies(species)
+                   .forChromosomes()
+                   .flatMap(resource -> resource.asParsedVCF()                                                      
+                                                .getRecords())
 
 # Maven Snapshots
 
