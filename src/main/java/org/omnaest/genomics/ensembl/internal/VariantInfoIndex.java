@@ -202,7 +202,6 @@ public class VariantInfoIndex
                                                  .current()
                                                  .forSpecies(species)
                                                  .forChromosomes()
-                                                 .limit(2)
                                                  .flatMap(resource -> resource.asParsedVCF()
                                                                               .getRecords()),
                                   EnsemblFTPUtils.load()
