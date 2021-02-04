@@ -18,6 +18,8 @@
 */
 package org.omnaest.genomics.ensembl.domain;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -54,5 +56,13 @@ public interface SpeciesAccessor
      * @return
      */
     public VariantDetail findVariantDetail(String variantId);
+
+    /**
+     * Similar to {@link #findVariantDetail(String)} for a batch of variant ids
+     * 
+     * @param variantIds
+     * @return
+     */
+    public Map<String, VariantDetail> findVariantDetails(Collection<String> variantIds);
 
 }

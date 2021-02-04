@@ -23,6 +23,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
+import java.util.Map;
+
 import org.junit.Ignore;
 import org.junit.Test;
 import org.omnaest.genomics.ensembl.domain.raw.BioType;
@@ -37,7 +40,6 @@ import org.omnaest.genomics.ensembl.domain.raw.VariantInfo;
 import org.omnaest.genomics.ensembl.domain.raw.Variations;
 import org.omnaest.genomics.ensembl.domain.raw.XRef;
 import org.omnaest.genomics.ensembl.domain.raw.XRefs;
-import org.omnaest.genomics.ensembl.rest.EnsemblRESTUtils;
 import org.omnaest.utils.JSONHelper;
 import org.omnaest.utils.rest.client.RestClient;
 
@@ -195,6 +197,21 @@ public class EnsemblRESTUtilsTest
         );
 
         System.out.println(JSONHelper.prettyPrint(variant));
+    }
+
+    @Test
+    public void testGetVariantDetailsBatch() throws Exception
+    {
+        Map<String, VariantInfo> variantMap = EnsemblRESTUtils.getInstance()
+                                                              .getVariantDetails("homo_sapiens", Arrays.asList("rs560833025", "wrongIdentifer"));
+        assertEquals(1, variantMap.size());
+        assertEquals(true, variantMap.containsKey("rs560833025"));
+        assertEquals(true, variantMap.get("rs560833025")
+                                     .getSynonyms()
+                                     .contains("rs560833025"));
+        assertNotNull(variantMap.get("rs560833025")
+                                .getConsequence());
+        //        System.out.println(JSONHelper.prettyPrint(variantMap));
     }
 
 }

@@ -18,7 +18,14 @@
 */
 package org.omnaest.genomics.ensembl.rest;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.omnaest.genomics.ensembl.EnsemblUtils;
 import org.omnaest.genomics.ensembl.domain.raw.ExonRegions;
@@ -30,9 +37,15 @@ import org.omnaest.genomics.ensembl.domain.raw.Sequences;
 import org.omnaest.genomics.ensembl.domain.raw.SpeciesList;
 import org.omnaest.genomics.ensembl.domain.raw.Transcripts;
 import org.omnaest.genomics.ensembl.domain.raw.VariantInfo;
+import org.omnaest.genomics.ensembl.domain.raw.VariantInfoBatch;
+import org.omnaest.genomics.ensembl.domain.raw.VariantInfoBatchRequest;
 import org.omnaest.genomics.ensembl.domain.raw.Variations;
 import org.omnaest.genomics.ensembl.domain.raw.XRefs;
+import org.omnaest.utils.MapUtils;
+import org.omnaest.utils.PredicateUtils;
+import org.omnaest.utils.StreamUtils;
 import org.omnaest.utils.cache.Cache;
+import org.omnaest.utils.element.bi.BiElement;
 import org.omnaest.utils.rest.client.RestClient;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
 
@@ -120,7 +133,21 @@ public class EnsemblRESTUtils
 
         ExternalXRefs getXRefsForExternalDatabaseByName(String species, String name, String externalDatabase);
 
+        /**
+         * @see #getVariantDetails(String, Collection)
+         * @param species
+         * @param variantId
+         * @return
+         */
         VariantInfo getVariantDetails(String species, String variantId);
+
+        /**
+         * @see #getVariantDetails(String, String)
+         * @param species
+         * @param variantIds
+         * @return
+         */
+        Map<String, VariantInfo> getVariantDetails(String species, Collection<String> variantIds);
 
     }
 
@@ -209,6 +236,49 @@ public class EnsemblRESTUtils
                                        .build();
 
                 return restClient.requestGet(url, VariantInfo.class);
+            }
+
+            @Override
+            public Map<String, VariantInfo> getVariantDetails(String species, Collection<String> variantIds)
+            {
+                RestClient restClient = this.newRestClient();
+                String url = restClient.urlBuilder()
+                                       .setBaseUrl(this.baseUrl)
+                                       .addPathToken("variation")
+                                       .addPathToken(species)
+                                       .addQueryParameter("phenotypes", "1")
+                                       .build();
+                return Optional.ofNullable(variantIds)
+                               .map(ids -> ids.stream()
+                                              .distinct()
+                                              .collect(Collectors.toList()))
+                               .map(ids -> StreamUtils.framedNonNullAsList(100, ids.stream()))
+                               .map(idBatch -> idBatch.map(ids -> restClient.requestPost(url, new VariantInfoBatchRequest(ids), VariantInfoBatch.class))
+                                                      .map(VariantInfoBatch::getVariantIdToVariantInfo)
+                                                      .reduce(MapUtils.merger())
+                                                      .orElse(Collections.emptyMap()))
+                               .map(resultMap ->
+                               {
+                                   Map<String, VariantInfo> variantIdToVariantInfo = resultMap.entrySet()
+                                                                                              .stream()
+                                                                                              .filter(entry -> entry.getValue() != null)
+                                                                                              .flatMap(entry -> Stream.concat(Stream.of(entry.getKey()),
+                                                                                                                              Optional.ofNullable(entry.getValue())
+                                                                                                                                      .map(VariantInfo::getSynonyms)
+                                                                                                                                      .map(List::stream)
+                                                                                                                                      .orElse(Stream.empty()))
+                                                                                                                      .filter(PredicateUtils.notNull())
+                                                                                                                      .distinct()
+                                                                                                                      .map(id -> BiElement.of(id,
+                                                                                                                                              entry.getValue())))
+                                                                                              .collect(Collectors.toMap(BiElement::getFirst,
+                                                                                                                        BiElement::getSecond, (v1, v2) -> v1));
+                                   return variantIds.stream()
+                                                    .distinct()
+                                                    .filter(variantIdToVariantInfo::containsKey)
+                                                    .collect(Collectors.toMap(id -> id, id -> variantIdToVariantInfo.get(id)));
+                               })
+                               .orElse(Collections.emptyMap());
             }
 
             private RestClient newRestClient()

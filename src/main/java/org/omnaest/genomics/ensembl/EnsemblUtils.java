@@ -20,6 +20,7 @@ package org.omnaest.genomics.ensembl;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -65,15 +68,18 @@ import org.omnaest.genomics.ensembl.internal.VariantInfoIndex;
 import org.omnaest.genomics.ensembl.rest.EnsemblRESTUtils;
 import org.omnaest.genomics.ensembl.rest.EnsemblRESTUtils.EnsembleRESTAccessor;
 import org.omnaest.utils.CollectorUtils;
+import org.omnaest.utils.ConsumerUtils;
 import org.omnaest.utils.ExceptionUtils;
 import org.omnaest.utils.ExceptionUtils.RuntimeExceptionHandler;
 import org.omnaest.utils.ListUtils;
+import org.omnaest.utils.MapperUtils;
 import org.omnaest.utils.MatcherUtils;
 import org.omnaest.utils.MatcherUtils.Match;
 import org.omnaest.utils.ObjectUtils;
 import org.omnaest.utils.PredicateUtils;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.cache.internal.JsonFolderFilesCache;
+import org.omnaest.utils.element.bi.BiElement;
 import org.omnaest.utils.element.cached.CachedElement;
 import org.omnaest.utils.repository.MapElementRepository;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
@@ -87,7 +93,7 @@ import org.slf4j.LoggerFactory;
  */
 public class EnsemblUtils
 {
-    static final Logger                  LOG                   = LoggerFactory.getLogger(EnsemblUtils.class);
+    private static final Logger          LOG                   = LoggerFactory.getLogger(EnsemblUtils.class);
     private static File                  localDefaultCacheFile = new File("cache/ensembl");
     private static Function<File, Cache> cacheFactory          = (file) -> new JsonFolderFilesCache(file).withNativeByteArrayStorage(true);
     private static Supplier<Cache>       cacheSupplier         = CachedElement.of(() -> cacheFactory.apply(localDefaultCacheFile));
@@ -117,6 +123,12 @@ public class EnsemblUtils
 
         EnsemblDataSetAccessor withVariantIdFilter(Predicate<String> variantFilter);
 
+        EnsemblDataSetAccessor withVariantDetailsRESTResolvingConsumer(Consumer<VariantInfo> variantByRESTConsumer);
+
+        EnsemblDataSetAccessor withVariantDetailsFTPResolvingConsumer(Consumer<VariantInfo> variantByFTPConsumer);
+
+        EnsemblDataSetAccessor withVariantDetailRESTResolvingEnabled(boolean enabled);
+
     }
 
     public static interface CacheManager
@@ -136,6 +148,34 @@ public class EnsemblUtils
         {
             private EnsembleRESTAccessor restAccessor     = EnsemblRESTUtils.getInstance();
             private VariantInfoIndex     variantInfoIndex = VariantInfoIndex.getInstance();
+
+            private Consumer<VariantInfo> globalVariantByFTPConsumer  = ConsumerUtils.noOperation();
+            private Consumer<VariantInfo> globalVariantByRESTConsumer = ConsumerUtils.noOperation();
+
+            private boolean variantDetailRESTResolvingEnabled = true;
+
+            @Override
+            public EnsemblDataSetAccessor withVariantDetailRESTResolvingEnabled(boolean enabled)
+            {
+                this.variantDetailRESTResolvingEnabled = enabled;
+                return this;
+            }
+
+            @Override
+            public EnsemblDataSetAccessor withVariantDetailsFTPResolvingConsumer(Consumer<VariantInfo> variantByFTPConsumer)
+            {
+                this.globalVariantByFTPConsumer = Optional.ofNullable(variantByFTPConsumer)
+                                                          .orElse(ConsumerUtils.noOperation());
+                return this;
+            }
+
+            @Override
+            public EnsemblDataSetAccessor withVariantDetailsRESTResolvingConsumer(Consumer<VariantInfo> variantByRESTConsumer)
+            {
+                this.globalVariantByRESTConsumer = Optional.ofNullable(variantByRESTConsumer)
+                                                           .orElse(ConsumerUtils.noOperation());
+                return this;
+            }
 
             @Override
             public EnsemblDataSetAccessor withProxy(Proxy proxy)
@@ -508,97 +548,166 @@ public class EnsemblUtils
                     @Override
                     public VariantDetail findVariantDetail(String variantId)
                     {
-                        CachedElement<VariantInfo> rawRESTVariantDetail = CachedElement.of(() -> restAccessor.getVariantDetails(rawSpecies.getName(),
-                                                                                                                                variantId));
-                        CachedElement<Optional<VariantInfo>> rawFtpVariantDetail = CachedElement.of(() -> variantInfoIndex.getVariantInfo(rawSpecies.getName(),
-                                                                                                                                          variantId));
+                        return this.findVariantDetails(Arrays.asList(variantId))
+                                   .get(variantId);
+                    }
 
-                        return new VariantDetail()
-                        {
-                            private <E> E getVariantInfo(Function<VariantInfo, E> methodReference)
-                            {
-                                return rawFtpVariantDetail.get()
-                                                          .map(methodReference)
-                                                          .filter(value -> value instanceof List ? !((List<?>) value).isEmpty() : true)
-                                                          .filter(value -> value instanceof Set ? !((Set<?>) value).isEmpty() : true)
-                                                          .filter(value -> value instanceof Map ? !((Map<?, ?>) value).isEmpty() : true)
-                                                          .orElseGet(() -> ObjectUtils.getIfNotNull(rawRESTVariantDetail.get(), methodReference));
-                            }
+                    @Override
+                    public Map<String, VariantDetail> findVariantDetails(Collection<String> variantIds)
+                    {
+                        CachedElement<Map<String, VariantInfo>> rawRESTVariantIdToVariantDetail = CachedElement.of(() -> variantDetailRESTResolvingEnabled
+                                ? restAccessor.getVariantDetails(rawSpecies.getName(), variantIds)
+                                : Collections.emptyMap());
+                        CachedElement<Map<String, VariantInfo>> rawFtpSingleVariantDetail = CachedElement.of(() -> Optional.ofNullable(variantIds)
+                                                                                                                           .orElse(Collections.emptySet())
+                                                                                                                           .stream()
+                                                                                                                           .distinct()
+                                                                                                                           .map(variantId -> BiElement.of(variantId,
+                                                                                                                                                          variantInfoIndex.getVariantInfo(rawSpecies.getName(),
+                                                                                                                                                                                          variantId)
+                                                                                                                                                                          .orElse(null)))
+                                                                                                                           .filter(BiElement::isSecondValueNotNull)
+                                                                                                                           .collect(CollectorUtils.toMapByBiElement()));
+                        return Optional.ofNullable(variantIds)
+                                       .orElse(Collections.emptySet())
+                                       .stream()
+                                       .distinct()
+                                       .map(variantId -> new VariantDetail()
+                                       {
+                                           private Consumer<VariantInfo> variantByFTPConsumer  = ConsumerUtils.noOperation();
+                                           private Consumer<VariantInfo> variantByRESTConsumer = ConsumerUtils.noOperation();
 
-                            @Override
-                            public List<String> getSynonyms()
-                            {
-                                return this.getVariantInfo(VariantInfo::getSynonyms);
-                            }
+                                           @Override
+                                           public String getId()
+                                           {
+                                               return variantId;
+                                           }
 
-                            @Override
-                            public int getProteinPosition()
-                            {
-                                int retval = -1;
+                                           @Override
+                                           public VariantDetail withFTPResolvingConsumer(Consumer<VariantInfo> variantByFTPConsumer)
+                                           {
+                                               this.variantByFTPConsumer = Optional.ofNullable(variantByFTPConsumer)
+                                                                                   .orElse(ConsumerUtils.noOperation());
+                                               return this;
+                                           }
 
-                                //NP_115990.3:p.Ala76Val
-                                List<String> synonyms = this.getSynonyms();
-                                for (String synonym : synonyms)
-                                {
-                                    Optional<Match> match = MatcherUtils.matcher()
-                                                                        .of(Pattern.compile("[_a-zA-Z0-9]+\\:p\\.([a-zA-Z]+)([0-9]+)([a-zA-Z]+)"))
-                                                                        .matchAgainst(synonym);
-                                    if (match.isPresent())
-                                    {
-                                        retval = NumberUtils.toInt(match.get()
-                                                                        .getGroups()
-                                                                        .get(2),
-                                                                   -1);
-                                        break;
-                                    }
-                                }
+                                           @Override
+                                           public VariantDetail withRESTResolvingConsumer(Consumer<VariantInfo> variantByRESTConsumer)
+                                           {
+                                               this.variantByRESTConsumer = Optional.ofNullable(variantByRESTConsumer)
+                                                                                    .orElse(ConsumerUtils.noOperation());
+                                               return this;
+                                           }
 
-                                return retval;
-                            }
+                                           private <E> Optional<E> getVariantInfo(Function<VariantInfo, E> methodReference)
+                                           {
+                                               AtomicReference<VariantInfo> restVariantInfo = new AtomicReference<>();
+                                               Optional<VariantInfo> ftpVariant = Optional.ofNullable(rawFtpSingleVariantDetail.get()
+                                                                                                                               .get(variantId));
+                                               E result = ftpVariant.map(methodReference)
+                                                                    .filter(value -> value instanceof List ? !((List<?>) value).isEmpty() : true)
+                                                                    .filter(value -> value instanceof Set ? !((Set<?>) value).isEmpty() : true)
+                                                                    .filter(value -> value instanceof Map ? !((Map<?, ?>) value).isEmpty() : true)
+                                                                    .orElseGet(() ->
+                                                                    {
+                                                                        restVariantInfo.set(rawRESTVariantIdToVariantDetail.get()
+                                                                                                                           .get(variantId));
+                                                                        return ObjectUtils.getIfNotNull(restVariantInfo.get(), methodReference);
+                                                                    });
 
-                            @Override
-                            public Set<ClinicalSignificance> getClinicalSignificances()
-                            {
-                                Set<String> clinicalSignifance = this.getVariantInfo(VariantInfo::getClinicalSignifance);
-                                return ObjectUtils.getOrDefaultIfNotNull(clinicalSignifance, () -> clinicalSignifance.stream()
-                                                                                                                     .map(significance -> Arrays.asList(ClinicalSignificance.values())
-                                                                                                                                                .stream()
-                                                                                                                                                .filter(isignificance -> isignificance.matches(significance))
-                                                                                                                                                .findFirst()
-                                                                                                                                                .orElse(ClinicalSignificance.OTHER))
-                                                                                                                     .collect(CollectorUtils.toSortedSet()),
-                                                                         () -> Collections.emptySet());
-                            }
+                                               if (restVariantInfo.get() != null)
+                                               {
+                                                   this.variantByRESTConsumer.accept(restVariantInfo.get());
+                                                   globalVariantByRESTConsumer.accept(restVariantInfo.get());
+                                               }
+                                               else if (ftpVariant.isPresent())
+                                               {
+                                                   this.variantByFTPConsumer.accept(ftpVariant.get());
+                                                   globalVariantByFTPConsumer.accept(ftpVariant.get());
+                                               }
 
-                            @Override
-                            public VariantConsequence getConsequence()
-                            {
-                                String currentConsequence = this.getVariantInfo(VariantInfo::getConsequence);
-                                return Arrays.asList(VariantConsequence.values())
-                                             .stream()
-                                             .filter(consequence -> consequence.matches(currentConsequence))
-                                             .findFirst()
-                                             .orElse(VariantConsequence.UNKNOWN);
-                            }
+                                               return Optional.ofNullable(result);
+                                           }
 
-                            @Override
-                            public SortedSet<String> getTraits()
-                            {
-                                return Optional.ofNullable(this.getVariantInfo(VariantInfo::getPhenotypes))
-                                               .orElse(Collections.emptyList())
-                                               .stream()
-                                               .map(pt -> pt.getTrait())
-                                               .filter(PredicateUtils.notBlank())
-                                               .collect(CollectorUtils.toSortedSet(new TreeSet<>()));
-                            }
+                                           @Override
+                                           public List<String> getSynonyms()
+                                           {
+                                               return this.getVariantInfo(VariantInfo::getSynonyms)
+                                                          .orElse(Collections.emptyList());
+                                           }
 
-                            @Override
-                            public double getMinorAlleleFrequency()
-                            {
-                                return NumberUtils.toDouble(this.getVariantInfo(VariantInfo::getMaf));
-                            }
+                                           @Override
+                                           public int getProteinPosition()
+                                           {
+                                               int retval = -1;
 
-                        };
+                                               //NP_115990.3:p.Ala76Val
+                                               List<String> synonyms = this.getSynonyms();
+                                               for (String synonym : synonyms)
+                                               {
+                                                   Optional<Match> match = MatcherUtils.matcher()
+                                                                                       .of(Pattern.compile("[_a-zA-Z0-9]+\\:p\\.([a-zA-Z]+)([0-9]+)([a-zA-Z]+)"))
+                                                                                       .matchAgainst(synonym);
+                                                   if (match.isPresent())
+                                                   {
+                                                       retval = NumberUtils.toInt(match.get()
+                                                                                       .getGroups()
+                                                                                       .get(2),
+                                                                                  -1);
+                                                       break;
+                                                   }
+                                               }
+
+                                               return retval;
+                                           }
+
+                                           @Override
+                                           public Set<ClinicalSignificance> getClinicalSignificances()
+                                           {
+                                               Set<String> clinicalSignifance = this.getVariantInfo(VariantInfo::getClinicalSignifance)
+                                                                                    .orElse(Collections.emptySet());
+                                               return ObjectUtils.getOrDefaultIfNotNull(clinicalSignifance, () -> clinicalSignifance.stream()
+                                                                                                                                    .map(significance -> Arrays.asList(ClinicalSignificance.values())
+                                                                                                                                                               .stream()
+                                                                                                                                                               .filter(isignificance -> isignificance.matches(significance))
+                                                                                                                                                               .findFirst()
+                                                                                                                                                               .orElse(ClinicalSignificance.OTHER))
+                                                                                                                                    .collect(CollectorUtils.toSortedSet()),
+                                                                                        () -> Collections.emptySet());
+                                           }
+
+                                           @Override
+                                           public VariantConsequence getConsequence()
+                                           {
+                                               String currentConsequence = this.getVariantInfo(VariantInfo::getConsequence)
+                                                                               .orElse(null);
+                                               return Arrays.asList(VariantConsequence.values())
+                                                            .stream()
+                                                            .filter(consequence -> consequence.matches(currentConsequence))
+                                                            .findFirst()
+                                                            .orElse(VariantConsequence.UNKNOWN);
+                                           }
+
+                                           @Override
+                                           public SortedSet<String> getTraits()
+                                           {
+                                               return this.getVariantInfo(VariantInfo::getPhenotypes)
+                                                          .orElse(Collections.emptyList())
+                                                          .stream()
+                                                          .map(pt -> pt.getTrait())
+                                                          .filter(PredicateUtils.notBlank())
+                                                          .collect(CollectorUtils.toSortedSet(new TreeSet<>()));
+                                           }
+
+                                           @Override
+                                           public double getMinorAlleleFrequency()
+                                           {
+                                               return NumberUtils.toDouble(this.getVariantInfo(VariantInfo::getMaf)
+                                                                               .orElse(null));
+                                           }
+
+                                       })
+                                       .collect(Collectors.toMap(VariantDetail::getId, MapperUtils.identity()));
                     }
 
                 };
