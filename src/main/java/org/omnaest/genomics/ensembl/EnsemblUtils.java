@@ -129,6 +129,8 @@ public class EnsemblUtils
 
         EnsemblDataSetAccessor withVariantDetailRESTResolvingEnabled(boolean enabled);
 
+        EnsemblDataSetAccessor withFTPLargeVariationFileIndexBatchSize(int batchSize);
+
     }
 
     public static interface CacheManager
@@ -217,6 +219,13 @@ public class EnsemblUtils
             public EnsemblDataSetAccessor withVariantIdFilter(Predicate<String> variantIdFilter)
             {
                 this.variantInfoIndex.withVariantIdFilter(variantIdFilter);
+                return this;
+            }
+
+            @Override
+            public EnsemblDataSetAccessor withFTPLargeVariationFileIndexBatchSize(int batchSize)
+            {
+                this.variantInfoIndex.withDistributionBatchSize(batchSize);
                 return this;
             }
 

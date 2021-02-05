@@ -35,11 +35,12 @@ public class VariantInfoIndex
 {
     private static final Logger LOG = LoggerFactory.getLogger(VariantInfoIndex.class);
 
-    private Cache                                                       cache              = CacheUtils.newNoOperationCache();
-    private Map<String, Index>                                          speciesToIndexData = new ConcurrentHashMap<String, Index>();
-    private Function<String, Index>                                     indexDataProvider  = species -> new Index();
-    private Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider = species -> ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
-    private Predicate<VCFRecord>                                        variantFilter      = PredicateUtils.allMatching();
+    private Cache                                                       cache                 = CacheUtils.newNoOperationCache();
+    private Map<String, Index>                                          speciesToIndexData    = new ConcurrentHashMap<String, Index>();
+    private Function<String, Index>                                     indexDataProvider     = species -> new Index();
+    private Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider    = species -> ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
+    private Predicate<VCFRecord>                                        variantFilter         = PredicateUtils.allMatching();
+    private int                                                         distributionBatchSize = 100000;
 
     public VariantInfoIndex usingCache(Cache cache)
     {
@@ -57,6 +58,12 @@ public class VariantInfoIndex
     public VariantInfoIndex withRepositoryProvider(Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider)
     {
         this.repositoryProvider = repositoryProvider;
+        return this;
+    }
+
+    public VariantInfoIndex withDistributionBatchSize(int distributionBatchSize)
+    {
+        this.distributionBatchSize = distributionBatchSize;
         return this;
     }
 
@@ -157,7 +164,7 @@ public class VariantInfoIndex
                                                                                       .withMaximum(numberOfVariants);
                     LOG.info("Start reading raw variant vcf files...");
                     ProcessorUtils.newRepeatingFilteredProcessorWithInMemoryCacheAndRepository(variantIdToVariantInfo, VariantInfo.class)
-                                  .withDistributionFactor(100000, numberOfVariants)
+                                  .withDistributionFactor(this.distributionBatchSize, numberOfVariants)
                                   .process((cacheId, distributionFactor) -> this.createVariantsStream(species)
                                                                                 .peek(StreamUtils.peekProgressCounter(100000,
                                                                                                                       numberOfAllSourceVariants.getAsLong(),
