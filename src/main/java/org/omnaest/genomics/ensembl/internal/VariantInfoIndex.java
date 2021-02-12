@@ -40,7 +40,7 @@ public class VariantInfoIndex
     private Function<String, Index>                                     indexDataProvider     = species -> new Index();
     private Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider    = species -> ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
     private Predicate<VCFRecord>                                        variantFilter         = PredicateUtils.allMatching();
-    private int                                                         distributionBatchSize = 100000;
+    private int                                                         distributionBatchSize = 1000000;
 
     public VariantInfoIndex usingCache(Cache cache)
     {
@@ -97,9 +97,9 @@ public class VariantInfoIndex
                         + " source variants.");
 
                 long currentVariantIndexSize = variantIdToVariantInfo.size();
-                if (currentVariantIndexSize < numberOfVariants)
                 {
-                    LOG.info("Rebuilding index as current index has only " + currentVariantIndexSize + " variants, but " + numberOfVariants + " are needed.");
+                    LOG.info("Rebuilding index with current index having " + currentVariantIndexSize + " variants, and " + numberOfVariants
+                            + " are to be matched.");
 
                     UnaryBiFunction<VariantInfo> variantInfoMerger = (info1, info2) ->
                     {

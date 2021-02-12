@@ -23,7 +23,9 @@ public interface VariantDetail
 
     public int getProteinPosition();
 
-    VariantDetail withRESTResolvingConsumer(Consumer<VariantInfo> variantByRESTConsumer);
+    public VariantDetail withRESTResolvingConsumer(Consumer<VariantInfo> variantByRESTConsumer);
 
-    VariantDetail withFTPResolvingConsumer(Consumer<VariantInfo> variantByFTPConsumer);
+    public VariantDetail withFTPResolvingConsumer(Consumer<VariantInfo> variantByFTPConsumer);
+
+    public VariantDetail withCacheResolvingConsumer(Consumer<VariantInfo> variantByCacheConsumer);
 }

@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 
 import org.junit.Ignore;
 import org.junit.Test;
-import org.omnaest.genomics.ensembl.EnsemblUtils;
 import org.omnaest.genomics.ensembl.domain.Exon;
 import org.omnaest.genomics.ensembl.domain.GeneLocation;
 import org.omnaest.genomics.ensembl.domain.SpeciesAccessor;
@@ -178,7 +177,19 @@ public class EnsemblUtilsTest
                                                                  .getConsequence());
         assertEquals(VariantConsequence._3_PRIME_UTR, speciesAccessor.findVariantDetail("rs6114998")
                                                                      .getConsequence());
+    }
 
+    @Test
+    public void testVariantDetailUsingCacheAndRest() throws Exception
+    {
+        SpeciesAccessor speciesAccessor = EnsemblUtils.getInstance()
+                                                      .usingLocalCache()
+                                                      .getHuman();
+
+        assertEquals(VariantConsequence.MISSENSE, speciesAccessor.findVariantDetail("rs682985")
+                                                                 .getConsequence());
+        assertEquals(VariantConsequence._3_PRIME_UTR, speciesAccessor.findVariantDetail("rs6114998")
+                                                                     .getConsequence());
     }
 
     @Test

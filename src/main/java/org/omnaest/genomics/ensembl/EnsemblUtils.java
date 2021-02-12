@@ -81,6 +81,7 @@ import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.cache.internal.JsonFolderFilesCache;
 import org.omnaest.utils.element.bi.BiElement;
 import org.omnaest.utils.element.cached.CachedElement;
+import org.omnaest.utils.optional.NullOptional;
 import org.omnaest.utils.repository.MapElementRepository;
 import org.omnaest.utils.rest.client.RestClient.Proxy;
 import org.omnaest.utils.rest.client.RestHelper.RESTAccessExeption;
@@ -93,10 +94,11 @@ import org.slf4j.LoggerFactory;
  */
 public class EnsemblUtils
 {
-    private static final Logger          LOG                   = LoggerFactory.getLogger(EnsemblUtils.class);
-    private static File                  localDefaultCacheFile = new File("cache/ensembl");
-    private static Function<File, Cache> cacheFactory          = (file) -> new JsonFolderFilesCache(file).withNativeByteArrayStorage(true);
-    private static Supplier<Cache>       cacheSupplier         = CachedElement.of(() -> cacheFactory.apply(localDefaultCacheFile));
+    private static final String          CACHE_KEY_VARIANT_DETAIL = "VARIANT_DETAIL";
+    private static final Logger          LOG                      = LoggerFactory.getLogger(EnsemblUtils.class);
+    private static File                  localDefaultCacheFile    = new File("cache/ensembl");
+    private static Function<File, Cache> cacheFactory             = (file) -> new JsonFolderFilesCache(file).withNativeByteArrayStorage(true);
+    private static Supplier<Cache>       cacheSupplier            = CachedElement.of(() -> cacheFactory.apply(localDefaultCacheFile));
 
     public static interface EnsemblDataSetAccessor
     {
@@ -131,6 +133,8 @@ public class EnsemblUtils
 
         EnsemblDataSetAccessor withFTPLargeVariationFileIndexBatchSize(int batchSize);
 
+        EnsemblDataSetAccessor withVariantDetailsCacheResolvingConsumer(Consumer<VariantInfo> variantByCacheConsumer);
+
     }
 
     public static interface CacheManager
@@ -151,10 +155,12 @@ public class EnsemblUtils
             private EnsembleRESTAccessor restAccessor     = EnsemblRESTUtils.getInstance();
             private VariantInfoIndex     variantInfoIndex = VariantInfoIndex.getInstance();
 
-            private Consumer<VariantInfo> globalVariantByFTPConsumer  = ConsumerUtils.noOperation();
-            private Consumer<VariantInfo> globalVariantByRESTConsumer = ConsumerUtils.noOperation();
+            private Consumer<VariantInfo> globalVariantByFTPConsumer   = ConsumerUtils.noOperation();
+            private Consumer<VariantInfo> globalVariantByRESTConsumer  = ConsumerUtils.noOperation();
+            private Consumer<VariantInfo> globalVariantByCacheConsumer = ConsumerUtils.noOperation();
 
             private boolean variantDetailRESTResolvingEnabled = true;
+            private Cache   cache;
 
             @Override
             public EnsemblDataSetAccessor withVariantDetailRESTResolvingEnabled(boolean enabled)
@@ -180,6 +186,14 @@ public class EnsemblUtils
             }
 
             @Override
+            public EnsemblDataSetAccessor withVariantDetailsCacheResolvingConsumer(Consumer<VariantInfo> variantByCacheConsumer)
+            {
+                this.globalVariantByCacheConsumer = Optional.ofNullable(variantByCacheConsumer)
+                                                            .orElse(ConsumerUtils.noOperation());
+                return this;
+            }
+
+            @Override
             public EnsemblDataSetAccessor withProxy(Proxy proxy)
             {
                 this.restAccessor.withProxy(proxy);
@@ -189,6 +203,7 @@ public class EnsemblUtils
             @Override
             public EnsemblDataSetAccessor usingCache(Cache cache)
             {
+                this.cache = cache;
                 this.restAccessor.usingCache(cache);
                 return this;
             }
@@ -564,27 +579,21 @@ public class EnsemblUtils
                     @Override
                     public Map<String, VariantDetail> findVariantDetails(Collection<String> variantIds)
                     {
-                        CachedElement<Map<String, VariantInfo>> rawRESTVariantIdToVariantDetail = CachedElement.of(() -> variantDetailRESTResolvingEnabled
-                                ? restAccessor.getVariantDetails(rawSpecies.getName(), variantIds)
-                                : Collections.emptyMap());
-                        CachedElement<Map<String, VariantInfo>> rawFtpSingleVariantDetail = CachedElement.of(() -> Optional.ofNullable(variantIds)
-                                                                                                                           .orElse(Collections.emptySet())
-                                                                                                                           .stream()
-                                                                                                                           .distinct()
-                                                                                                                           .map(variantId -> BiElement.of(variantId,
-                                                                                                                                                          variantInfoIndex.getVariantInfo(rawSpecies.getName(),
-                                                                                                                                                                                          variantId)
-                                                                                                                                                                          .orElse(null)))
-                                                                                                                           .filter(BiElement::isSecondValueNotNull)
-                                                                                                                           .collect(CollectorUtils.toMapByBiElement()));
+                        CachedElement<Function<String, VariantInfo>> cachedVariantIdToVariantDetail = CachedElement.of(this.cachedVariantResolverFactory(rawSpecies,
+                                                                                                                                                         variantIds));
+                        CachedElement<Function<String, VariantInfo>> rawRESTVariantIdToVariantDetail = CachedElement.of(this.restVariantResolverFactory(rawSpecies,
+                                                                                                                                                        variantIds));
+                        CachedElement<Function<String, VariantInfo>> rawFtpSingleVariantDetail = CachedElement.of(this.ftpVariantResolverFactory(rawSpecies,
+                                                                                                                                                 variantIds));
                         return Optional.ofNullable(variantIds)
                                        .orElse(Collections.emptySet())
                                        .stream()
                                        .distinct()
                                        .map(variantId -> new VariantDetail()
                                        {
-                                           private Consumer<VariantInfo> variantByFTPConsumer  = ConsumerUtils.noOperation();
-                                           private Consumer<VariantInfo> variantByRESTConsumer = ConsumerUtils.noOperation();
+                                           private Consumer<VariantInfo> variantByFTPConsumer   = ConsumerUtils.noOperation();
+                                           private Consumer<VariantInfo> variantByRESTConsumer  = ConsumerUtils.noOperation();
+                                           private Consumer<VariantInfo> variantByCacheConsumer = ConsumerUtils.noOperation();
 
                                            @Override
                                            public String getId()
@@ -608,31 +617,59 @@ public class EnsemblUtils
                                                return this;
                                            }
 
+                                           @Override
+                                           public VariantDetail withCacheResolvingConsumer(Consumer<VariantInfo> variantByCacheConsumer)
+                                           {
+                                               this.variantByCacheConsumer = Optional.ofNullable(variantByCacheConsumer)
+                                                                                     .orElse(ConsumerUtils.noOperation());
+                                               return this;
+                                           }
+
                                            private <E> Optional<E> getVariantInfo(Function<VariantInfo, E> methodReference)
                                            {
                                                AtomicReference<VariantInfo> restVariantInfo = new AtomicReference<>();
-                                               Optional<VariantInfo> ftpVariant = Optional.ofNullable(rawFtpSingleVariantDetail.get()
-                                                                                                                               .get(variantId));
-                                               E result = ftpVariant.map(methodReference)
-                                                                    .filter(value -> value instanceof List ? !((List<?>) value).isEmpty() : true)
-                                                                    .filter(value -> value instanceof Set ? !((Set<?>) value).isEmpty() : true)
-                                                                    .filter(value -> value instanceof Map ? !((Map<?, ?>) value).isEmpty() : true)
-                                                                    .orElseGet(() ->
-                                                                    {
-                                                                        restVariantInfo.set(rawRESTVariantIdToVariantDetail.get()
-                                                                                                                           .get(variantId));
-                                                                        return ObjectUtils.getIfNotNull(restVariantInfo.get(), methodReference);
-                                                                    });
+                                               AtomicReference<VariantInfo> ftpVariantInfo = new AtomicReference<>();
+                                               NullOptional<VariantInfo> cachedVariant = NullOptional.ofNullable(cachedVariantIdToVariantDetail.get()
+                                                                                                                                               .apply(variantId));
+
+                                               E result = cachedVariant.map(methodReference)
+                                                                       .filter(value -> value instanceof List ? !((List<?>) value).isEmpty() : true)
+                                                                       .filter(value -> value instanceof Set ? !((Set<?>) value).isEmpty() : true)
+                                                                       .filter(value -> value instanceof Map ? !((Map<?, ?>) value).isEmpty() : true)
+                                                                       .orElseFlatMap(() -> NullOptional.ofNullable(rawFtpSingleVariantDetail.get()
+                                                                                                                                             .apply(variantId))
+                                                                                                        .ifPresent(variant -> ftpVariantInfo.set(variant))
+                                                                                                        .map(methodReference)
+                                                                                                        .filter(value -> value instanceof List
+                                                                                                                ? !((List<?>) value).isEmpty()
+                                                                                                                : true)
+                                                                                                        .filter(value -> value instanceof Set
+                                                                                                                ? !((Set<?>) value).isEmpty()
+                                                                                                                : true)
+                                                                                                        .filter(value -> value instanceof Map
+                                                                                                                ? !((Map<?, ?>) value).isEmpty()
+                                                                                                                : true))
+                                                                       .orElseGet(() ->
+                                                                       {
+                                                                           restVariantInfo.set(rawRESTVariantIdToVariantDetail.get()
+                                                                                                                              .apply(variantId));
+                                                                           return ObjectUtils.getIfNotNull(restVariantInfo.get(), methodReference);
+                                                                       });
 
                                                if (restVariantInfo.get() != null)
                                                {
                                                    this.variantByRESTConsumer.accept(restVariantInfo.get());
                                                    globalVariantByRESTConsumer.accept(restVariantInfo.get());
                                                }
-                                               else if (ftpVariant.isPresent())
+                                               else if (ftpVariantInfo.get() != null)
                                                {
-                                                   this.variantByFTPConsumer.accept(ftpVariant.get());
-                                                   globalVariantByFTPConsumer.accept(ftpVariant.get());
+                                                   this.variantByFTPConsumer.accept(ftpVariantInfo.get());
+                                                   globalVariantByFTPConsumer.accept(ftpVariantInfo.get());
+                                               }
+                                               else if (cachedVariant.isPresent())
+                                               {
+                                                   this.variantByCacheConsumer.accept(cachedVariant.get());
+                                                   globalVariantByCacheConsumer.accept(cachedVariant.get());
                                                }
 
                                                return Optional.ofNullable(result);
@@ -717,6 +754,70 @@ public class EnsemblUtils
 
                                        })
                                        .collect(Collectors.toMap(VariantDetail::getId, MapperUtils.identity()));
+                    }
+
+                    private Supplier<Function<String, VariantInfo>> ftpVariantResolverFactory(Species rawSpecies, Collection<String> variantIds)
+                    {
+                        return () ->
+                        {
+                            Map<String, VariantInfo> map = Optional.ofNullable(variantIds)
+                                                                   .orElse(Collections.emptySet())
+                                                                   .stream()
+                                                                   .distinct()
+                                                                   .map(variantId -> BiElement.of(variantId,
+                                                                                                  variantInfoIndex.getVariantInfo(rawSpecies.getName(),
+                                                                                                                                  variantId)
+                                                                                                                  .orElse(null)))
+                                                                   .filter(BiElement::isSecondValueNotNull)
+                                                                   .collect(CollectorUtils.toMapByBiElement());
+                            return variantId -> map.get(variantId);
+                        };
+                    }
+
+                    private Supplier<Function<String, VariantInfo>> restVariantResolverFactory(Species rawSpecies, Collection<String> variantIds)
+                    {
+                        return () ->
+                        {
+                            Map<String, VariantInfo> map = variantDetailRESTResolvingEnabled ? restAccessor.getVariantDetails(rawSpecies.getName(), variantIds)
+                                    : Collections.emptyMap();
+                            return variantId ->
+                            {
+                                VariantInfo variantInfo = map.get(variantId);
+
+                                if (variantInfo != null && cache != null)
+                                {
+                                    cache.computeIfAbsent(this.determineCacheKey(rawSpecies, variantId), () -> variantInfo, VariantInfo.class);
+                                }
+
+                                return variantInfo;
+                            };
+                        };
+                    }
+
+                    private Supplier<Function<String, VariantInfo>> cachedVariantResolverFactory(Species rawSpecies, Collection<String> variantIds)
+                    {
+                        return () ->
+                        {
+                            Map<String, VariantInfo> map = cache != null ? Optional.ofNullable(variantIds)
+                                                                                   .orElse(Collections.emptySet())
+                                                                                   .stream()
+                                                                                   .map(variantId -> BiElement.of(variantId,
+                                                                                                                  cache.get(this.determineCacheKey(rawSpecies,
+                                                                                                                                                   variantId),
+                                                                                                                            VariantInfo.class)))
+                                                                                   .filter(BiElement::hasNoNullValue)
+                                                                                   .collect(Collectors.toMap(BiElement::getFirst, BiElement::getSecond))
+                                    : Collections.emptyMap();
+                            return variantId -> map.get(variantId);
+                        };
+                    }
+
+                    private String determineCacheKey(Species rawSpecies, String variantId)
+                    {
+                        return CACHE_KEY_VARIANT_DETAIL + ":" + Optional.ofNullable(rawSpecies)
+                                                                        .map(Species::getName)
+                                                                        .orElse("")
+                                + ":" + variantId;
                     }
 
                 };
