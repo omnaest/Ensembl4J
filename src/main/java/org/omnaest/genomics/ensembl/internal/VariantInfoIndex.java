@@ -40,7 +40,7 @@ public class VariantInfoIndex
     private Function<String, Index>                                     indexDataProvider     = species -> new Index();
     private Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider    = species -> ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
     private Predicate<VCFRecord>                                        variantFilter         = PredicateUtils.allMatching();
-    private int                                                         distributionBatchSize = 1000000;
+    private int                                                         distributionBatchSize = 100000;
 
     public VariantInfoIndex usingCache(Cache cache)
     {
