@@ -633,22 +633,19 @@ public class EnsemblUtils
                                                                                                                                                .apply(variantId));
 
                                                E result = cachedVariant.map(methodReference)
-                                                                       .filter(value -> value instanceof List ? !((List<?>) value).isEmpty() : true)
-                                                                       .filter(value -> value instanceof Set ? !((Set<?>) value).isEmpty() : true)
-                                                                       .filter(value -> value instanceof Map ? !((Map<?, ?>) value).isEmpty() : true)
-                                                                       .orElseFlatMap(() -> NullOptional.ofNullable(rawFtpSingleVariantDetail.get()
-                                                                                                                                             .apply(variantId))
-                                                                                                        .ifPresent(variant -> ftpVariantInfo.set(variant))
-                                                                                                        .map(methodReference)
-                                                                                                        .filter(value -> value instanceof List
-                                                                                                                ? !((List<?>) value).isEmpty()
-                                                                                                                : true)
-                                                                                                        .filter(value -> value instanceof Set
-                                                                                                                ? !((Set<?>) value).isEmpty()
-                                                                                                                : true)
-                                                                                                        .filter(value -> value instanceof Map
-                                                                                                                ? !((Map<?, ?>) value).isEmpty()
-                                                                                                                : true))
+                                                                       .orElseGetAndFlatMap(() -> NullOptional.ofNullable(rawFtpSingleVariantDetail.get()
+                                                                                                                                                   .apply(variantId))
+                                                                                                              .ifPresent(variant -> ftpVariantInfo.set(variant))
+                                                                                                              .map(methodReference)
+                                                                                                              .filter(value -> value instanceof List
+                                                                                                                      ? !((List<?>) value).isEmpty()
+                                                                                                                      : true)
+                                                                                                              .filter(value -> value instanceof Set
+                                                                                                                      ? !((Set<?>) value).isEmpty()
+                                                                                                                      : true)
+                                                                                                              .filter(value -> value instanceof Map
+                                                                                                                      ? !((Map<?, ?>) value).isEmpty()
+                                                                                                                      : true))
                                                                        .orElseGet(() ->
                                                                        {
                                                                            restVariantInfo.set(rawRESTVariantIdToVariantDetail.get()
