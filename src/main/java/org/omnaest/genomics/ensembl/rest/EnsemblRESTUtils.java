@@ -187,7 +187,7 @@ public class EnsemblRESTUtils
                                                     long start, long end)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("map")
                                        .addPathToken(species)
@@ -242,7 +242,7 @@ public class EnsemblRESTUtils
             public VariantInfo getVariantDetails(String species, String variantId)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("variation")
                                        .addPathToken(species)
@@ -257,7 +257,7 @@ public class EnsemblRESTUtils
             public Map<String, VariantInfo> getVariantDetails(String species, Collection<String> variantIds)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("variation")
                                        .addPathToken(species)
@@ -316,7 +316,7 @@ public class EnsemblRESTUtils
             public XRefs getXRefs(String species, String symbol)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("xrefs")
                                        .addPathToken("symbol")
@@ -330,7 +330,7 @@ public class EnsemblRESTUtils
             public XRefs getXRefs(String id)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("xrefs")
                                        .addPathToken("id")
@@ -343,7 +343,7 @@ public class EnsemblRESTUtils
             public ExternalXRefs getXRefsForExternalDatabase(String id, String externalDatabase)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("xrefs")
                                        .addPathToken("id")
@@ -357,7 +357,7 @@ public class EnsemblRESTUtils
             public ExternalXRefs getXRefsForExternalDatabaseByName(String species, String name, String externalDatabase)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("xrefs")
                                        .addPathToken("name")
@@ -372,7 +372,7 @@ public class EnsemblRESTUtils
             public ExternalXRefs getXRefsForExternalDatabase(String id)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("xrefs")
                                        .addPathToken("id")
@@ -385,7 +385,7 @@ public class EnsemblRESTUtils
             public Lookup getLookUp(String id)
             {
                 RestClient restClient = this.newRestClient();
-                String url = restClient.urlBuilder()
+                String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
                                        .addPathToken("lookup")
                                        .addPathToken("id")
