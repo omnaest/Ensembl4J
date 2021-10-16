@@ -23,4 +23,9 @@ public enum VariantSeverity implements Comparable<VariantSeverity>
     {
         return this.compareTo(otherSeverity) >= 0;
     }
+
+    public boolean isEqualOrHigherComparedTo(VariantSeverity otherSeverity)
+    {
+        return this.compareTo(otherSeverity) <= 0;
+    }
 }

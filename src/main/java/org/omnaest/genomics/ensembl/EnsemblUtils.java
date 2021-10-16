@@ -240,8 +240,8 @@ public class EnsemblUtils
             @Override
             public EnsemblDataSetAccessor usingFTPLargeVariationFileIndexSupportWithRepositoryProvider(Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider)
             {
-                this.variantInfoIndex.withRepositoryProvider(repositoryProvider)
-                                     .enable();
+                //                this.variantInfoIndex.withRepositoryProvider(repositoryProvider)
+                //                                     .enable();
                 return this;
             }
 
@@ -598,8 +598,8 @@ public class EnsemblUtils
                                                                                                                                                          variantIds));
                         CachedElement<Function<String, VariantInfo>> rawRESTVariantIdToVariantDetail = CachedElement.of(this.restVariantResolverFactory(rawSpecies,
                                                                                                                                                         variantIds));
-                        CachedElement<Function<String, VariantInfo>> rawFtpSingleVariantDetail = CachedElement.of(this.ftpVariantResolverFactory(rawSpecies,
-                                                                                                                                                 variantIds));
+                        //                        CachedElement<Function<String, VariantInfo>> rawFtpSingleVariantDetail = CachedElement.of(this.ftpVariantResolverFactory(rawSpecies,
+                        //                                                                                                                                                 variantIds));
                         return Optional.ofNullable(variantIds)
                                        .orElse(Collections.emptySet())
                                        .stream()
@@ -648,19 +648,21 @@ public class EnsemblUtils
                                                                                                                                                .apply(variantId));
 
                                                E result = cachedVariant.map(methodReference)
-                                                                       .orElseGetAndFlatMap(() -> NullOptional.ofNullable(rawFtpSingleVariantDetail.get()
-                                                                                                                                                   .apply(variantId))
-                                                                                                              .ifPresent(variant -> ftpVariantInfo.set(variant))
-                                                                                                              .map(methodReference)
-                                                                                                              .filter(value -> value instanceof List
-                                                                                                                      ? !((List<?>) value).isEmpty()
-                                                                                                                      : true)
-                                                                                                              .filter(value -> value instanceof Set
-                                                                                                                      ? !((Set<?>) value).isEmpty()
-                                                                                                                      : true)
-                                                                                                              .filter(value -> value instanceof Map
-                                                                                                                      ? !((Map<?, ?>) value).isEmpty()
-                                                                                                                      : true))
+                                                                       .orElseGetAndFlatMap(() -> NullOptional.empty()
+                                               //                                                                       NullOptional.ofNullable(rawFtpSingleVariantDetail.get()
+                                               //                                                                                                                                                   .apply(variantId))
+                                               //                                                                                                              .ifPresent(variant -> ftpVariantInfo.set(variant))
+                                               //                                                                                                              .map(methodReference)
+                                               //                                                                                                              .filter(value -> value instanceof List
+                                               //                                                                                                                      ? !((List<?>) value).isEmpty()
+                                               //                                                                                                                      : true)
+                                               //                                                                                                              .filter(value -> value instanceof Set
+                                               //                                                                                                                      ? !((Set<?>) value).isEmpty()
+                                               //                                                                                                                      : true)
+                                               //                                                                                                              .filter(value -> value instanceof Map
+                                               //                                                                                                                      ? !((Map<?, ?>) value).isEmpty()
+                                               //                                                                                                                      : true)
+                                               )
                                                                        .orElseGet(() ->
                                                                        {
                                                                            restVariantInfo.set(rawRESTVariantIdToVariantDetail.get()
@@ -768,23 +770,23 @@ public class EnsemblUtils
                                        .collect(Collectors.toMap(VariantDetail::getId, MapperUtils.identity()));
                     }
 
-                    private Supplier<Function<String, VariantInfo>> ftpVariantResolverFactory(Species rawSpecies, Collection<String> variantIds)
-                    {
-                        return () ->
-                        {
-                            Map<String, VariantInfo> map = Optional.ofNullable(variantIds)
-                                                                   .orElse(Collections.emptySet())
-                                                                   .stream()
-                                                                   .distinct()
-                                                                   .map(variantId -> BiElement.of(variantId,
-                                                                                                  variantInfoIndex.getVariantInfo(rawSpecies.getName(),
-                                                                                                                                  variantId)
-                                                                                                                  .orElse(null)))
-                                                                   .filter(BiElement::isSecondValueNotNull)
-                                                                   .collect(CollectorUtils.toMapByBiElement());
-                            return variantId -> map.get(variantId);
-                        };
-                    }
+                    //                    private Supplier<Function<String, VariantInfo>> ftpVariantResolverFactory(Species rawSpecies, Collection<String> variantIds)
+                    //                    {
+                    //                        return () ->
+                    //                        {
+                    //                            Map<String, VariantInfo> map = Optional.ofNullable(variantIds)
+                    //                                                                   .orElse(Collections.emptySet())
+                    //                                                                   .stream()
+                    //                                                                   .distinct()
+                    //                                                                   .map(variantId -> BiElement.of(variantId,
+                    //                                                                                                  variantInfoIndex.getVariantInfo(rawSpecies.getName(),
+                    //                                                                                                                                  variantId)
+                    //                                                                                                                  .orElse(null)))
+                    //                                                                   .filter(BiElement::isSecondValueNotNull)
+                    //                                                                   .collect(CollectorUtils.toMapByBiElement());
+                    //                            return variantId -> map.get(variantId);
+                    //                        };
+                    //                    }
 
                     private Supplier<Function<String, VariantInfo>> restVariantResolverFactory(Species rawSpecies, Collection<String> variantIds)
                     {

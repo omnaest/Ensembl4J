@@ -58,6 +58,7 @@ import org.omnaest.genomics.ensembl.domain.raw.XRefs;
 import org.omnaest.utils.JSONHelper;
 import org.omnaest.utils.rest.client.RestClient;
 
+@Ignore
 public class EnsemblRESTUtilsTest
 {
 

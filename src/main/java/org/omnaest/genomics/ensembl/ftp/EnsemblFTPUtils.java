@@ -17,6 +17,7 @@ package org.omnaest.genomics.ensembl.ftp;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -81,6 +82,14 @@ public class EnsemblFTPUtils
         public byte[] getData();
 
         public VCFResourceAccessor asParsedVCF();
+
+        /**
+         * Defines if the content should be kept even after reading the data. Default is true.
+         * 
+         * @param clearCache
+         * @return
+         */
+        public VariationVCFResource withCacheClearanceAfterRead(boolean clearCache);
     }
 
     public static interface VariationChromosomeVCFResource extends VariationVCFResource
@@ -148,7 +157,6 @@ public class EnsemblFTPUtils
                     {
                         return new EnsembleVariationVCFLoaderWithVersion()
                         {
-
                             @Override
                             public EnsembleVariationVCFLoaderWithVersionAndHomoSapiensSpecies forHomoSapiens()
                             {
@@ -164,20 +172,30 @@ public class EnsemblFTPUtils
                                     public VariationVCFResource forClinicallyAssociated()
                                     {
                                         String fileName = "/pub/" + version + "/vcf/" + species + "/" + species + "_clinically_associated.vcf.gz";
-                                        return this.createVariationVCFResource(fileName, this.loadFileFromFtp(fileName));
+                                        return this.createVariationVCFResource(fileName, () -> this.loadFileFromFtp(fileName));
                                     }
 
                                     @Override
                                     public VariationVCFResource forPhenotypeAssociated()
                                     {
                                         String fileName = "/pub/" + version + "/vcf/" + species + "/" + species + "_phenotype_associated.vcf.gz";
-                                        return this.createVariationVCFResource(fileName, this.loadFileFromFtp(fileName));
+                                        return this.createVariationVCFResource(fileName, () -> this.loadFileFromFtp(fileName));
                                     }
 
-                                    private VariationVCFResource createVariationVCFResource(String fileName, byte[] data)
+                                    private VariationVCFResource createVariationVCFResource(String fileName, Supplier<byte[]> dataSupplier)
                                     {
+                                        CachedElement<byte[]> cachedData = CachedElement.of(dataSupplier);
                                         return new VariationVCFResource()
                                         {
+                                            private boolean clearCache = true;
+
+                                            @Override
+                                            public VariationVCFResource withCacheClearanceAfterRead(boolean clearCache)
+                                            {
+                                                this.clearCache = clearCache;
+                                                return this;
+                                            }
+
                                             @Override
                                             public String getFileName()
                                             {
@@ -187,15 +205,21 @@ public class EnsemblFTPUtils
                                             @Override
                                             public byte[] getData()
                                             {
-                                                return data;
+                                                if (this.clearCache)
+                                                {
+                                                    return cachedData.getAndReset();
+                                                }
+                                                else
+                                                {
+                                                    return cachedData.get();
+                                                }
                                             }
 
                                             @Override
                                             public VCFResourceAccessor asParsedVCF()
                                             {
-                                                return gzipResourceAsParsedVCF(fileName, data);
+                                                return gzipResourceAsParsedVCF(fileName, this.getData());
                                             }
-
                                         };
                                     }
 
@@ -257,6 +281,8 @@ public class EnsemblFTPUtils
                                                                   CachedElement<byte[]> data = CachedElement.of(() -> this.loadFileFromFtp(fileName));
                                                                   return new VariationChromosomeVCFResource()
                                                                   {
+                                                                      private boolean clearCache = true;
+
                                                                       @Override
                                                                       public String getFileName()
                                                                       {
@@ -266,7 +292,14 @@ public class EnsemblFTPUtils
                                                                       @Override
                                                                       public byte[] getData()
                                                                       {
-                                                                          return data.get();
+                                                                          if (this.clearCache)
+                                                                          {
+                                                                              return data.getAndReset();
+                                                                          }
+                                                                          else
+                                                                          {
+                                                                              return data.get();
+                                                                          }
                                                                       }
 
                                                                       @Override
@@ -278,7 +311,14 @@ public class EnsemblFTPUtils
                                                                       @Override
                                                                       public VCFResourceAccessor asParsedVCF()
                                                                       {
-                                                                          return gzipResourceAsParsedVCF(fileName, data.get());
+                                                                          return gzipResourceAsParsedVCF(fileName, this.getData());
+                                                                      }
+
+                                                                      @Override
+                                                                      public VariationVCFResource withCacheClearanceAfterRead(boolean clearCache)
+                                                                      {
+                                                                          this.clearCache = clearCache;
+                                                                          return this;
                                                                       }
                                                                   };
 

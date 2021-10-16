@@ -150,6 +150,7 @@ public class EnsemblUtilsTest
     }
 
     @Test
+    @Ignore
     public void testReferenceLocation() throws Exception
     {
         GeneLocation location = EnsemblUtils.getInstance()
@@ -168,6 +169,7 @@ public class EnsemblUtilsTest
     }
 
     @Test
+    @Ignore
     public void testGetProteinSequences() throws Exception
     {
         List<String> proteinSequences = EnsemblUtils.getInstance()
@@ -183,6 +185,7 @@ public class EnsemblUtilsTest
     }
 
     @Test
+    @Ignore
     public void testVariantDetail() throws Exception
     {
         SpeciesAccessor speciesAccessor = EnsemblUtils.getInstance()
@@ -195,6 +198,7 @@ public class EnsemblUtilsTest
     }
 
     @Test
+    @Ignore
     public void testVariantDetailUsingCacheAndRest() throws Exception
     {
         SpeciesAccessor speciesAccessor = EnsemblUtils.getInstance()

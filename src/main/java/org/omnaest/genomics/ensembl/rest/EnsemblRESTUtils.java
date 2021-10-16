@@ -164,6 +164,8 @@ public class EnsemblRESTUtils
          */
         Map<String, VariantInfo> getVariantDetails(String species, Collection<String> variantIds);
 
+        Map<String, VariantInfo> getVariantDetails(String species, Stream<String> variantIds);
+
     }
 
     public static EnsembleRESTAccessor getInstance()
@@ -256,6 +258,14 @@ public class EnsemblRESTUtils
             @Override
             public Map<String, VariantInfo> getVariantDetails(String species, Collection<String> variantIds)
             {
+                return this.getVariantDetails(species, Optional.ofNullable(variantIds)
+                                                               .map(Collection::stream)
+                                                               .orElse(Stream.empty()));
+            }
+
+            @Override
+            public Map<String, VariantInfo> getVariantDetails(String species, Stream<String> variantIds)
+            {
                 RestClient restClient = this.newRestClient();
                 String url = RestClient.urlBuilder()
                                        .setBaseUrl(this.baseUrl)
@@ -264,35 +274,37 @@ public class EnsemblRESTUtils
                                        .addQueryParameter("phenotypes", "1")
                                        .build();
                 return Optional.ofNullable(variantIds)
-                               .map(ids -> ids.stream()
-                                              .distinct()
-                                              .collect(Collectors.toList()))
-                               .map(ids -> StreamUtils.framedNonNullAsList(100, ids.stream()))
-                               .map(idBatch -> idBatch.map(ids -> restClient.requestPost(url, new VariantInfoBatchRequest(ids), VariantInfoBatch.class))
-                                                      .map(VariantInfoBatch::getVariantIdToVariantInfo)
+                               .map(ids -> StreamUtils.framedNonNullAsList(100, ids.distinct()))
+                               .map(idBatch -> idBatch.map(ids ->
+                               {
+                                   Map<String, VariantInfo> variantIdToVariantInfo = Optional.ofNullable(restClient.requestPost(url,
+                                                                                                                                new VariantInfoBatchRequest(ids),
+                                                                                                                                VariantInfoBatch.class))
+                                                                                             .map(VariantInfoBatch::getVariantIdToVariantInfo)
+                                                                                             .orElse(Collections.emptyMap());
+
+                                   // merged variant ids will be contained within the synonyms and we have to explode the synonyms here
+                                   Map<String, VariantInfo> explodedVariantIdToVariantInfo = variantIdToVariantInfo.entrySet()
+                                                                                                                   .stream()
+                                                                                                                   .filter(entry -> entry.getValue() != null)
+                                                                                                                   .flatMap(entry -> Stream.concat(Stream.of(entry.getKey()),
+                                                                                                                                                   Optional.ofNullable(entry.getValue())
+                                                                                                                                                           .map(VariantInfo::getSynonyms)
+                                                                                                                                                           .map(List::stream)
+                                                                                                                                                           .orElse(Stream.empty()))
+                                                                                                                                           .filter(PredicateUtils.notNull())
+                                                                                                                                           .distinct()
+                                                                                                                                           .map(id -> BiElement.of(id,
+                                                                                                                                                                   entry.getValue())))
+                                                                                                                   .collect(Collectors.toMap(BiElement::getFirst,
+                                                                                                                                             BiElement::getSecond,
+                                                                                                                                             (v1, v2) -> v1));
+                                   return ids.stream()
+                                             .filter(explodedVariantIdToVariantInfo::containsKey)
+                                             .collect(Collectors.toMap(id -> id, id -> explodedVariantIdToVariantInfo.get(id)));
+                               })
                                                       .reduce(MapUtils.merger())
                                                       .orElse(Collections.emptyMap()))
-                               .map(resultMap ->
-                               {
-                                   Map<String, VariantInfo> variantIdToVariantInfo = resultMap.entrySet()
-                                                                                              .stream()
-                                                                                              .filter(entry -> entry.getValue() != null)
-                                                                                              .flatMap(entry -> Stream.concat(Stream.of(entry.getKey()),
-                                                                                                                              Optional.ofNullable(entry.getValue())
-                                                                                                                                      .map(VariantInfo::getSynonyms)
-                                                                                                                                      .map(List::stream)
-                                                                                                                                      .orElse(Stream.empty()))
-                                                                                                                      .filter(PredicateUtils.notNull())
-                                                                                                                      .distinct()
-                                                                                                                      .map(id -> BiElement.of(id,
-                                                                                                                                              entry.getValue())))
-                                                                                              .collect(Collectors.toMap(BiElement::getFirst,
-                                                                                                                        BiElement::getSecond, (v1, v2) -> v1));
-                                   return variantIds.stream()
-                                                    .distinct()
-                                                    .filter(variantIdToVariantInfo::containsKey)
-                                                    .collect(Collectors.toMap(id -> id, id -> variantIdToVariantInfo.get(id)));
-                               })
                                .orElse(Collections.emptyMap());
             }
 

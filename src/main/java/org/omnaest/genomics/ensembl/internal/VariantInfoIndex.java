@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -37,7 +38,7 @@ import org.omnaest.utils.StreamUtils;
 import org.omnaest.utils.cache.Cache;
 import org.omnaest.utils.counter.Counter;
 import org.omnaest.utils.counter.DurationProgressCounter;
-import org.omnaest.utils.counter.DurationProgressCounter.DurationProgress;
+import org.omnaest.utils.counter.ImmutableDurationProgressCounter.DurationProgress;
 import org.omnaest.utils.duration.DurationCapture.DisplayableDuration;
 import org.omnaest.utils.functional.UnaryBiFunction;
 import org.omnaest.utils.optional.NullOptional;
@@ -46,16 +47,18 @@ import org.omnaest.utils.repository.MapElementRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class VariantInfoIndex
 {
     private static final Logger LOG = LoggerFactory.getLogger(VariantInfoIndex.class);
 
-    private Cache                                                       cache                 = CacheUtils.newNoOperationCache();
-    private Map<String, Index>                                          speciesToIndexData    = new ConcurrentHashMap<String, Index>();
-    private Function<String, Index>                                     indexDataProvider     = species -> new Index();
-    private Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider    = species -> ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
-    private Predicate<VCFRecord>                                        variantFilter         = PredicateUtils.allMatching();
-    private int                                                         distributionBatchSize = 100000;
+    private Cache                                                            cache                 = CacheUtils.newNoOperationCache();
+    private Map<String, Index>                                               speciesToIndexData    = new ConcurrentHashMap<String, Index>();
+    private Function<String, Index>                                          indexDataProvider     = species -> new Index();
+    private Function<String, MapElementRepository<String, IndexVariantInfo>> repositoryProvider    = species -> ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
+    private Predicate<VCFRecord>                                             variantFilter         = PredicateUtils.allMatching();
+    private int                                                              distributionBatchSize = 100000;
 
     public VariantInfoIndex usingCache(Cache cache)
     {
@@ -65,12 +68,12 @@ public class VariantInfoIndex
 
     public VariantInfoIndex usingLocalCache()
     {
-        return this.usingCache(CacheUtils.newLocalJsonFolderCache("ensembl/ftp")
+        return this.usingCache(CacheUtils.newLocalJsonFolderCache("ensembl/ftp2")
                                          .withNativeByteArrayStorage(true)
                                          .withNativeStringStorage(true));
     }
 
-    public VariantInfoIndex withRepositoryProvider(Function<String, MapElementRepository<String, VariantInfo>> repositoryProvider)
+    public VariantInfoIndex withRepositoryProvider(Function<String, MapElementRepository<String, IndexVariantInfo>> repositoryProvider)
     {
         this.repositoryProvider = repositoryProvider;
         return this;
@@ -92,13 +95,16 @@ public class VariantInfoIndex
         return new VariantInfoIndex();
     }
 
+    private Map<String, DurationProgressCounter> speciesToProcessedVariantsDurationCounter = new ConcurrentHashMap<>();
+    private int                                  variantLoadLimit                          = Integer.MAX_VALUE;
+
     public VariantInfoIndex enable()
     {
         this.indexDataProvider = species ->
         {
             try
             {
-                MapElementRepository<String, VariantInfo> variantIdToVariantInfo = this.repositoryProvider.apply(species);
+                MapElementRepository<String, IndexVariantInfo> variantIdToVariantInfo = this.repositoryProvider.apply(species);
 
                 // *****************
 
@@ -116,10 +122,11 @@ public class VariantInfoIndex
                     LOG.info("Rebuilding index with current index having " + currentVariantIndexSize + " variants, and " + numberOfVariants
                             + " are to be matched.");
 
-                    UnaryBiFunction<VariantInfo> variantInfoMerger = (info1, info2) ->
+                    UnaryBiFunction<IndexVariantInfo> variantInfoMerger = (info1, info2) ->
                     {
-                        VariantInfo variantInfo = new VariantInfo();
-
+                        IndexVariantInfo variantInfo = new IndexVariantInfo();
+                        variantInfo.setRsId(Optional.ofNullable(info1.getRsId())
+                                                    .orElse(info2.getRsId()));
                         variantInfo.setMaf(Optional.ofNullable(info1.getMaf())
                                                    .orElse(info2.getMaf()));
                         variantInfo.setConsequence(Stream.of(info1.getConsequence(), info2.getConsequence())
@@ -144,9 +151,11 @@ public class VariantInfoIndex
                         return variantInfo;
                     };
 
-                    Function<VCFRecord, VariantInfo> variationVcfRecordToVariantInfoMapper = record ->
+                    Function<VCFRecord, IndexVariantInfo> variationVcfRecordToVariantInfoMapper = record ->
                     {
-                        VariantInfo variantInfo = new VariantInfo();
+                        IndexVariantInfo variantInfo = new IndexVariantInfo();
+
+                        variantInfo.setRsId(record.getId());
 
                         variantInfo.setMaf(record.getInfoValue(AdditionalInfo.MAF)
                                                  .orElse(variantInfo.getMaf()));
@@ -174,11 +183,16 @@ public class VariantInfoIndex
                         return variantInfo;
                     };
 
+                    DurationProgressCounter overallDurationCounter = this.speciesToProcessedVariantsDurationCounter.getOrDefault(species, Counter.fromZero()
+                                                                                                                                                 .asDurationProgressCounter()
+                                                                                                                                                 .withMaximum(100));
                     DurationProgressCounter processedVariantsDurationCounter = Counter.fromZero()
                                                                                       .asDurationProgressCounter()
                                                                                       .withMaximum(numberOfVariants);
+                    overallDurationCounter.synchronizeProgressContinouslyFrom(processedVariantsDurationCounter);
+
                     LOG.info("Start reading raw variant vcf files...");
-                    ProcessorUtils.newRepeatingFilteredProcessorWithInMemoryCacheAndRepository(variantIdToVariantInfo, VariantInfo.class)
+                    ProcessorUtils.newRepeatingFilteredProcessorWithInMemoryCacheAndRepository(variantIdToVariantInfo, IndexVariantInfo.class)
                                   .withDistributionFactor(this.distributionBatchSize, numberOfVariants)
                                   .process((cacheId, distributionFactor) -> this.createVariantsStream(species)
                                                                                 .peek(StreamUtils.peekProgressCounter(100000,
@@ -218,54 +232,79 @@ public class VariantInfoIndex
 
     private Stream<VCFRecord> createVariantsStream(String species)
     {
-        return StreamUtils.concat(EnsemblFTPUtils.load()
-                                                 .withCache(this.cache)
-                                                 .variationVCFFiles()
-                                                 .current()
-                                                 .forSpecies(species)
-                                                 .forChromosomes()
-                                                 .flatMap(resource -> resource.asParsedVCF()
-                                                                              .getRecords()),
-                                  EnsemblFTPUtils.load()
-                                                 .withCache(this.cache)
-                                                 .variationVCFFiles()
-                                                 .current()
-                                                 .forSpecies(species)
-                                                 .forClinicallyAssociated()
-                                                 .asParsedVCF()
-                                                 .getRecords(),
-                                  EnsemblFTPUtils.load()
-                                                 .withCache(this.cache)
-                                                 .variationVCFFiles()
-                                                 .current()
-                                                 .forSpecies(species)
-                                                 .forPhenotypeAssociated()
-                                                 .asParsedVCF()
-                                                 .getRecords());
+        Stream<VCFRecord> records = StreamUtils.concat(EnsemblFTPUtils.load()
+                                                                      .withCache(this.cache)
+                                                                      .variationVCFFiles()
+                                                                      .current()
+                                                                      .forSpecies(species)
+                                                                      .forChromosomes()
+                                                                      .flatMap(resource -> resource.asParsedVCF()
+                                                                                                   .getRecords()),
+                                                       EnsemblFTPUtils.load()
+                                                                      .withCache(this.cache)
+                                                                      .variationVCFFiles()
+                                                                      .current()
+                                                                      .forSpecies(species)
+                                                                      .forClinicallyAssociated()
+                                                                      .asParsedVCF()
+                                                                      .getRecords(),
+                                                       EnsemblFTPUtils.load()
+                                                                      .withCache(this.cache)
+                                                                      .variationVCFFiles()
+                                                                      .current()
+                                                                      .forSpecies(species)
+                                                                      .forPhenotypeAssociated()
+                                                                      .asParsedVCF()
+                                                                      .getRecords());
+        if (this.variantLoadLimit < Integer.MAX_VALUE)
+        {
+            records = records.limit(this.variantLoadLimit);
+        }
+        return records;
     }
 
     public static class Index
     {
-        private MapElementRepository<String, VariantInfo> variantIdToVariantInfo = ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
+        private MapElementRepository<String, IndexVariantInfo> variantIdToVariantInfo = ElementRepository.ofNonSupplied(new ConcurrentHashMap<>());
 
         public Index()
         {
             super();
         }
 
-        public Index(MapElementRepository<String, VariantInfo> variantIdToVariantInfo)
+        public Index(MapElementRepository<String, IndexVariantInfo> variantIdToVariantInfo)
         {
             super();
             this.variantIdToVariantInfo = variantIdToVariantInfo;
         }
 
-        public NullOptional<VariantInfo> get(String variantId)
+        public NullOptional<IndexVariantInfo> get(String variantId)
         {
             return this.variantIdToVariantInfo.get(variantId);
         }
+
+        public Stream<IndexVariantInfo> stream()
+        {
+            return this.variantIdToVariantInfo.values();
+        }
     }
 
-    public Optional<VariantInfo> getVariantInfo(String species, String variantId)
+    public VariantInfoIndex withMaximumNumberOfVariants(int maxiumum)
+    {
+        this.variantLoadLimit = maxiumum;
+        return this;
+    }
+
+    public VariantInfoIndex initializeSpecies(String species, Consumer<DurationProgressCounter> counterConsumer)
+    {
+        counterConsumer.accept(VariantInfoIndex.this.speciesToProcessedVariantsDurationCounter.compute(species, (s, previous) -> Counter.fromZero()
+                                                                                                                                        .asDurationProgressCounter()
+                                                                                                                                        .withMaximum(100)));
+        Optional.ofNullable(this.speciesToIndexData.computeIfAbsent(species, this.indexDataProvider));
+        return this;
+    }
+
+    public Optional<IndexVariantInfo> getVariantInfo(String species, String variantId)
     {
         return Optional.ofNullable(this.speciesToIndexData.computeIfAbsent(species, this.indexDataProvider))
                        .orElse(new Index())
@@ -277,5 +316,29 @@ public class VariantInfoIndex
     {
         this.variantFilter = record -> variantIdFilter.test(record.getId());
         return this;
+    }
+
+    public Stream<IndexVariantInfo> stream()
+    {
+        return this.speciesToIndexData.values()
+                                      .stream()
+                                      .flatMap(index -> index.stream());
+    }
+
+    public static class IndexVariantInfo extends VariantInfo
+    {
+        @JsonProperty
+        private String rsId;
+
+        public String getRsId()
+        {
+            return this.rsId;
+        }
+
+        public void setRsId(String rsId)
+        {
+            this.rsId = rsId;
+        }
+
     }
 }

@@ -20,13 +20,30 @@ import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
 
+/**
+ * <a href="https://m.ensembl.org/info/genome/variation/prediction/predicted_data.html">Ensembl documentation</a>
+ * 
+ * @author omnaest
+ */
 public enum VariantConsequence
 {
     MISSENSE("missense_variant", VariantSeverity.MEDIUM),
+    PROTEIN_ALTERING_VARIANT("protein_altering_variant", VariantSeverity.MEDIUM),
     _3_PRIME_UTR("3_prime_UTR_variant", VariantSeverity.LOW),
     _5_PRIME_UTR("5_prime_UTR_variant", VariantSeverity.LOW),
     INTRON("intron_variant", VariantSeverity.LOW),
+    STOP_GAINED("stop_gained", VariantSeverity.HIGH),
+    START_LOST("start_lost", VariantSeverity.HIGH),
+    STOP_LOST("stop_lost", VariantSeverity.HIGH),
+    FRAME_SHIFT_VARIANT("frameshift_variant", VariantSeverity.HIGH),
+    INFRAME_INSERTION("inframe_insertion", VariantSeverity.MEDIUM),
+    INFRAME_DELETION("inframe_deletion", VariantSeverity.MEDIUM),
     REGULATORY_REGION("regulatory_region_variant", VariantSeverity.HIGH),
+    REGULATORY_REGION_ABLATION("regulatory_region_ablation", VariantSeverity.HIGH),
+    TRANSCRIPTION_FACTOR_BINDING_SITE("TF_binding_site_variant", VariantSeverity.HIGH),
+    TRANSCRIPT_ABLATION("transcript_ablation", VariantSeverity.HIGH),
+    TRANSCRIPT_AMPLIFICATION("transcript_amplification", VariantSeverity.HIGH),
+    SPLICE_ACCEPTOR_VARIANT("splice_acceptor_variant", VariantSeverity.HIGH),
     UPSTREAM_GENE("upstream_gene_variant", VariantSeverity.LOW),
     DOWNSTREAM_GENE("downstream_gene_variant", VariantSeverity.LOW),
     SYNONYMOUS("synonymous_variant", VariantSeverity.NONE),
